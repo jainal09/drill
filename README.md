@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="assets/drill-icon.png" width="180" alt="Drill project icon">
+  <img src="drill-icon.png" width="180" alt="Drill project icon">
 </p>
 
 <h1 align="center">drill</h1>
