@@ -1,0 +1,11 @@
+# your practice work is yours -- it does not belong in the repo
+solves/*
+scratch/*
+templates/*
+!templates/.gitkeep
+cheatsheet.py
+log.md
+*.bak
+__pycache__/
+*.pyc
+.DS_Store
