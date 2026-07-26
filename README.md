@@ -1,6 +1,12 @@
-# drill
+<p align="center">
+  <img src="assets/drill-icon.png" width="180" alt="Drill project icon">
+</p>
 
-A terminal coding-drill environment where **nothing helps you type**.
+<h1 align="center">drill</h1>
+
+<p align="center">
+  A terminal coding-drill environment where <strong>nothing helps you type</strong>.
+</p>
 
 Two files: one Neovim config, one shell script. No plugins, no plugin manager,
 no distro, no LSP, no completion, no AI. You type from memory, you run it, you
@@ -18,7 +24,7 @@ could read code fine and describe the algorithm fine, but I couldn't *produce*
 a bad place to be in a 45-minute interview with a shared editor and no plugins.
 
 So: 18 days of DSA in Python, in an environment where nothing can help. Not
-"autocomplete turned off" — autocomplete *absent*, at every source, verified.
+"autocomplete turned off" â€” autocomplete *absent*, at every source, verified.
 
 Every mainstream Neovim distro (LazyVim, NvChad, AstroNvim, kickstart) ships
 completion on by default. That's the opposite of the requirement, so this is a
@@ -29,7 +35,7 @@ globally. **Your own `~/.config/nvim` and `~/.vimrc` are not touched.**
 
 - No autocomplete, no LSP, no Copilot, no AI, no snippet expansion
 - No linter suggestions, no auto-import, no signature hints
-- Syntax highlighting only — nothing else appears on screen while you type
+- Syntax highlighting only â€” nothing else appears on screen while you type
 - No plugin manager, no distro
 - Stock Python 3 and Neovim. That's the whole dependency list.
 
@@ -65,17 +71,17 @@ the same session back with everything you were poking at still defined.
 
 You are always typing. Land in the interpreter and you're at the `>>>` prompt;
 come back and you're in insert. No `i`, no Esc, no mode-juggling. That's
-deliberate — the point is fluency in *typing code*, not fluency in vim.
+deliberate â€” the point is fluency in *typing code*, not fluency in vim.
 
 ## Commands
 
 | | |
 |---|---|
-| `d <name>` | edit `~/drill/scratch/<name>.py` — bare `d` opens the listing |
+| `d <name>` | edit `~/drill/scratch/<name>.py` â€” bare `d` opens the listing |
 | `dt <name>` | same for `templates/` |
 | `ds <name>` | same for `solves/` |
 | `r <file>` | `python3 <file>` |
-| `ri <file>` | `python3 -i <file>` — REPL with the file's names already live |
+| `ri <file>` | `python3 -i <file>` â€” REPL with the file's names already live |
 | `t` / `t10` | 25- / 10-minute timer, non-blocking, alerts at zero |
 
 `r` and `ri` take a bare name and find it under `scratch/`, `solves/` or
@@ -86,11 +92,11 @@ deliberate — the point is fluency in *typing code*, not fluency in vim.
 Normal-editor keys, because fighting your muscle memory is not the skill being
 practised here:
 
-`Ctrl+S` save · `Ctrl+C/X/V` copy/cut/paste · `Ctrl+A` select all ·
-`Ctrl+Z/Y` undo/redo · `Ctrl+F` find · **Shift+arrows select** ·
+`Ctrl+S` save Â· `Ctrl+C/X/V` copy/cut/paste Â· `Ctrl+A` select all Â·
+`Ctrl+Z/Y` undo/redo Â· `Ctrl+F` find Â· **Shift+arrows select** Â·
 `Ctrl+Q` visual block
 
-Everything else is still vim: `hjkl`, `dd`, `ciw`, `.`, macros, `:%s/…`.
+Everything else is still vim: `hjkl`, `dd`, `ciw`, `.`, macros, `:%s/â€¦`.
 
 Full reference, including all seven keybinding conflicts and how each is
 resolved: **[KEYS.md](KEYS.md)**.
@@ -98,7 +104,7 @@ resolved: **[KEYS.md](KEYS.md)**.
 ## Verify it's really doing nothing
 
 Don't take my word for it. In the editor, type a `heapq` snippet and watch for a
-popup — there won't be one. Then force the issue:
+popup â€” there won't be one. Then force the issue:
 
 | Press | Expected |
 |---|---|
