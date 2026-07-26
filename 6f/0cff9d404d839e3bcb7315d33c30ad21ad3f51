@@ -1,0 +1,31 @@
+.gitignore
+  s_a004e8a91761fd::t_28f770dba1a32d 1-11
+KEYS.md
+  s_a004e8a91761fd::t_3921556228dda3 1-172
+LICENSE
+  s_a004e8a91761fd::t_96e6d25e05c3a2 1-21
+README.md
+  s_a004e8a91761fd::t_ebeb1976d28c74 1-132
+drill.sh
+  s_a004e8a91761fd::t_cb1bcd4695fe7d 1-99
+install.sh
+  s_a004e8a91761fd::t_71122811d44c8a 1-106
+nvimrc.lua
+  s_a004e8a91761fd::t_1a0334b6098c45 1-256
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "6f0cff9d404d839e3bcb7315d33c30ad21ad3f51",
+  "prompts": {},
+  "sessions": {
+    "s_a004e8a91761fd": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9c1e2f50-626e-4a28-bd56-7ef1dbc22671",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jainal Gosaliya <jainal09gosalia@gmail.com>"
+    }
+  }
+}
