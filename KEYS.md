@@ -18,6 +18,8 @@ Syntax highlighting only. No completion, no LSP, no snippets, no AI.
 | `Ctrl+Z` | undo | normal, insert, visual |
 | `Ctrl+Y` | redo | normal, insert, visual |
 | `Ctrl+Shift+Z` | redo (needs a terminal that speaks CSI-u) | normal, insert, visual |
+| `Tab` | indent the selected lines | **selection only** |
+| `Shift+Tab` | unindent the selected lines | **selection only** |
 | `Ctrl+Q` | visual block (was `Ctrl+V`) | normal, visual |
 | **Shift+arrows** | **select, like any other editor** | normal, insert |
 | `Delete` / `Backspace` | delete the selection and keep typing | selection |
@@ -148,6 +150,15 @@ Every one of these was a real collision, not a hypothetical.
    `"\128\252\2\26"` and `"\26"`, so the redo mapping is real. On a terminal
    without it, `Ctrl+Shift+Z` falls back to `Ctrl+Z` and *undoes* — which is why
    `Ctrl+Y` is kept as the redo that works everywhere.
+
+10. **`Tab` indents a selection, but only a selection.** In insert mode `Tab`
+    has to go on inserting indentation, and in normal mode it is the jumplist,
+    so the mapping is confined to visual and select. The obvious implementation,
+    vim's own `:{range}>`, is wrong here: an ex command **drops Select mode**, so
+    the first `Tab` works and a second silently shifts only the cursor's line.
+    Measured — two tabs on a two-line selection indented one line by 8 and the
+    other by 4. It uses the buffer API instead, same rule as `Ctrl+/`: change the
+    lines, never the mode. Output is byte-identical to `:>` otherwise.
 
 Two smaller traps, both found the hard way:
 

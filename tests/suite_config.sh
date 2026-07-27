@@ -57,6 +57,46 @@ t sel_backspace_deletes_selection \
    --content 'alpha bravo' --keys "${SEL5}<BS>" --expect ' bravo'
 
 echo
+echo "=== Tab / Shift+Tab indent a selection ==="
+# Bound in visual+select ONLY. Insert-mode Tab must go on typing indentation.
+
+t tab_indents_the_highlighted_lines --ext py \
+   --content 'a = 1\nb = 2\nc = 3' --keys '<S-Down><S-Down><Tab><Esc>' \
+   --expect '    a = 1\n    b = 2\nc = 3'
+
+# TWO tabs only reach both lines if the selection SURVIVED the first. This is
+# the case vim's own :{range}> fails: an ex command drops Select mode.
+t tab_twice_selection_survives --ext py \
+   --content 'a = 1\nb = 2\nc = 3' --keys '<S-Down><S-Down><Tab><Tab><Esc>' \
+   --expect '        a = 1\n        b = 2\nc = 3'
+
+t shift_tab_unindents --ext py \
+   --content '        a = 1\n        b = 2' --keys '<S-Down><S-Tab><Esc>' \
+   --expect '    a = 1\n        b = 2'
+
+t tab_then_shift_tab_roundtrips --ext py \
+   --content 'a = 1\nb = 2' --keys '<S-Down><Tab><S-Tab><Esc>' --expect 'a = 1\nb = 2'
+
+t shift_tab_floors_at_column_zero --ext py \
+   --content 'a = 1\nb = 2' --keys '<S-Down><S-Tab><S-Tab><Esc>' --expect 'a = 1\nb = 2'
+
+t tab_leaves_blank_lines_blank --ext py \
+   --content 'a\n\nb\nc' --keys '<S-Down><S-Down><S-Down><Tab><Esc>' \
+   --expect '    a\n\n    b\nc'
+
+t tab_visual_linewise --ext py --start normal \
+   --content 'a\nb\nc' --keys 'ggVj<Tab><Esc>' --expect '    a\n    b\nc'
+
+# matches vim's own :> byte for byte -- a leading tab in an expandtab buffer is
+# re-rendered as spaces, which is normalisation, not loss
+t tab_mixed_indent_matches_vim --ext py \
+   --content '\tif x:\n        y = 1\nz' --keys '<S-Down><S-Down><Tab><Esc>' \
+   --expect '        if x:\n            y = 1\nz'
+
+# REGRESSION GUARD: Tab must never stop typing indentation in insert mode
+t insert_tab_still_types_indent --ext py \
+   --content 'x' --cursor 1:1 --keys '<Tab>Z<Esc>' --expect '    Zx'
+
 echo "=== cut / paste / select-all ==="
 
 t cut_ctrl_x_in_select \

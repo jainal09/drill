@@ -313,6 +313,72 @@ for _, key in ipairs({ "<C-_>", "<C-/>", "<C-S-/>" }) do
   end
 end
 
+-- ---------------------------------------------------------------------------
+-- Tab / Shift+Tab indent a selection  --  selection ONLY
+--
+-- Bound in "x" and "s" and deliberately NOWHERE ELSE. In insert mode Tab has to
+-- go on inserting indentation -- you are writing Python -- and in normal mode it
+-- is the jumplist. Tab is 0x09, outside the 32..126 printable-key Select loop
+-- below, so there is nothing to fight over here.
+--
+-- Not vim's own :{range}> , which was the obvious answer and is wrong: an ex
+-- command DROPS Select mode, so the first Tab works and a second one silently
+-- shifts only the line the cursor happens to be on. Measured -- two Tabs on a
+-- 2-line selection indented one line by 8 and the other by 4. Same buffer-API
+-- rule as the comment toggle: touch the lines, never the mode.
+--
+-- Widths are computed in DISPLAY columns, not bytes, so a tab counts as a full
+-- tabstop. Re-rendering the indent through 'expandtab' means a leading tab in a
+-- spaces buffer becomes spaces -- that is not a round-trip loss, it is exactly
+-- what :> does, verified byte-for-byte against it.
+-- ---------------------------------------------------------------------------
+local function shift_lines(dir)                  -- dir = 1 indent, -1 unindent
+  if not vim.bo.modifiable then return end
+  local lo, hi = live_range()
+  local sw, ts = vim.fn.shiftwidth(), vim.bo.tabstop
+  if sw <= 0 then sw = ts end                    -- shiftwidth=0 means "use tabstop"
+  local et = vim.bo.expandtab
+  local lines = vim.api.nvim_buf_get_lines(0, lo - 1, hi, false)
+  if #lines == 0 then return end
+
+  local function width(ws)                       -- display width of an indent
+    local w = 0
+    for ch in ws:gmatch(".") do
+      if ch == "\t" then w = w + (ts - w % ts) else w = w + 1 end
+    end
+    return w
+  end
+  local function make(w)                         -- an indent of display width w
+    if et then return string.rep(" ", w) end
+    return string.rep("\t", math.floor(w / ts)) .. string.rep(" ", w % ts)
+  end
+
+  local shift = {}
+  for i, l in ipairs(lines) do
+    shift[i] = 0
+    if l:find("%S") then                         -- blank lines stay blank: no
+      local ws = l:match("^[ \t]*")              -- trailing-whitespace litter
+      local w = width(ws)
+      local new = make(dir > 0 and w + sw or math.max(0, w - sw)) .. l:sub(#ws + 1)
+      shift[i] = #new - #l
+      lines[i] = new
+    end
+  end
+  vim.api.nvim_buf_set_lines(0, lo - 1, hi, false, lines)
+
+  -- same caret rule as the comment toggle: stay on the character you were on.
+  local pos = vim.api.nvim_win_get_cursor(0)
+  local row, col = pos[1], pos[2]
+  if row >= lo and row <= hi then
+    col = math.max(0, col + (shift[row - lo + 1] or 0))
+    local len = #(vim.api.nvim_buf_get_lines(0, row - 1, row, false)[1] or "")
+    if col > len then col = len end
+    pcall(vim.api.nvim_win_set_cursor, 0, { row, col })
+  end
+end
+map({ "x", "s" }, "<Tab>",   function() shift_lines(1) end, S)
+map({ "x", "s" }, "<S-Tab>", function() shift_lines(-1) end, S)
+
 -- CONFLICT 3: <C-z> is suspend by default. Mapped in every mode that can reach
 -- nvim's own suspend, so the editor cannot be accidentally backgrounded.
 map({ "n", "v", "i" }, "<C-z>", "<Cmd>undo<CR>", S)

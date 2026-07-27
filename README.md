@@ -100,11 +100,11 @@ practised here:
 `Ctrl+S` save · `Ctrl+C/X/V` copy/cut/paste · `Ctrl+A` select all ·
 `Ctrl+Z` undo · `Ctrl+Y` / `Ctrl+Shift+Z` redo · `Ctrl+F` find ·
 `Ctrl+/` comment ·
-**Shift+arrows select** · `Ctrl+Q` visual block
+**Shift+arrows select** · `Tab` / `Shift+Tab` indent · `Ctrl+Q` visual block
 
 Everything else is still vim: `hjkl`, `dd`, `ciw`, `.`, macros, `:%s/…`.
 
-Full reference, including all nine keybinding conflicts and how each is
+Full reference, including all ten keybinding conflicts and how each is
 resolved: **[KEYS.md](KEYS.md)**.
 
 ## Tests
@@ -117,7 +117,7 @@ is off at every source, and that `Ctrl+C` stays unmapped in normal and terminal
 mode so SIGINT still reaches a running program.
 
 ```sh
-./tests/run.sh            # 260 cases; exit 0 only if all pass
+./tests/run.sh            # 269 cases; exit 0 only if all pass
 ./tests/run.sh sel_       # just the select-mode cases
 ```
 
