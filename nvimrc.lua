@@ -96,6 +96,32 @@ map("i", "<C-a>", "<C-o>gg<C-o>gH<C-o>G", S)
 map("n", "<C-f>", "/", L)              -- find
 map("i", "<C-f>", "<Esc>/", L)
 
+-- comment/uncomment selected text or current line
+local function toggle_comment()
+  local function toggle_line(lnum)
+    local line = vim.fn.getline(lnum)
+    if vim.fn.match(line, "^\\s*#") == 0 then
+      -- uncomment: remove # and optional space
+      vim.fn.setline(lnum, vim.fn.substitute(line, "^\\(\\s*\\)# ?", "\\1", ""))
+    else
+      -- comment: add # and space after leading whitespace
+      vim.fn.setline(lnum, vim.fn.substitute(line, "^\\(\\s*\\)", "\\1# ", ""))
+    end
+  end
+
+  if vim.fn.mode():match("[vV]") or vim.fn.mode() == "s" then
+    local start = vim.fn.getpos("'<")[2]
+    local finish = vim.fn.getpos("'>")[2]
+    for lnum = start, finish do
+      toggle_line(lnum)
+    end
+  else
+    toggle_line(vim.fn.line("."))
+  end
+end
+
+map({ "n", "v", "s" }, "<C-/>", toggle_comment, S)
+
 -- CONFLICT 3: <C-z> is suspend by default. Mapped in every mode that can reach
 -- nvim's own suspend, so the editor cannot be accidentally backgrounded.
 map({ "n", "v", "i" }, "<C-z>", "<Cmd>undo<CR>", S)
