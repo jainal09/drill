@@ -96,31 +96,26 @@ map("i", "<C-a>", "<C-o>gg<C-o>gH<C-o>G", S)
 map("n", "<C-f>", "/", L)              -- find
 map("i", "<C-f>", "<Esc>/", L)
 
--- comment/uncomment selected text or current line
-local function toggle_comment()
-  local function toggle_line(lnum)
+-- toggle comment on line(s)
+local toggle_comment = function()
+  local start = vim.fn.getpos("'<")[2]
+  local finish = vim.fn.getpos("'>")[2]
+  if start == nil then start = vim.fn.line(".") end
+  if finish == nil then finish = vim.fn.line(".") end
+  for lnum = start, finish do
     local line = vim.fn.getline(lnum)
     if vim.fn.match(line, "^\\s*#") == 0 then
-      -- uncomment: remove # and optional space
       vim.fn.setline(lnum, vim.fn.substitute(line, "^\\(\\s*\\)# ?", "\\1", ""))
     else
-      -- comment: add # and space after leading whitespace
       vim.fn.setline(lnum, vim.fn.substitute(line, "^\\(\\s*\\)", "\\1# ", ""))
     end
   end
-
-  if vim.fn.mode():match("[vV]") or vim.fn.mode() == "s" then
-    local start = vim.fn.getpos("'<")[2]
-    local finish = vim.fn.getpos("'>")[2]
-    for lnum = start, finish do
-      toggle_line(lnum)
-    end
-  else
-    toggle_line(vim.fn.line("."))
-  end
 end
 
-map({ "n", "v", "s" }, "<leader>/", toggle_comment, S)  -- comment/uncomment (Space+/)
+-- Try Ctrl+/ - works in normal, visual, and select modes
+for _, keys in ipairs({ "<C-/>", "<C-_>" }) do
+  pcall(function() map({ "n", "x", "s" }, keys, toggle_comment, S) end)
+end
 
 -- CONFLICT 3: <C-z> is suspend by default. Mapped in every mode that can reach
 -- nvim's own suspend, so the editor cannot be accidentally backgrounded.
@@ -172,9 +167,9 @@ local function type_here()
       -- FINISHED process is a trap: the next key just closes the window.
       local id = vim.b.terminal_job_id
       if id and vim.fn.jobwait({ id }, 0)[1] == -1 then vim.cmd("startinsert") end
-    elseif from_term and vim.bo.buftype == "" and vim.bo.modifiable
-       and vim.bo.filetype ~= "netrw" then
-      vim.cmd("startinsert")
+    elseif vim.bo.buftype == "" and vim.bo.modifiable
+       and vim.bo.filetype ~= "netrw" then            -- `d` with no arg: a listing,
+      vim.cmd("startinsert")                          -- where every letter is a command
     end
   end)
 end
@@ -264,6 +259,8 @@ vim.api.nvim_create_autocmd({ "TermOpen", "BufEnter", "WinEnter" }, {
       type_here()
     elseif from_term then
       from_term = false
+      type_here()
+    elseif vim.bo.buftype == "" and vim.bo.modifiable then
       type_here()
     end
   end,
