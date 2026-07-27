@@ -1,0 +1,23 @@
+nvimrc.lua
+  s_4c8946ed4c6aa9::t_8a4bdcc0a2a5ab 100,103-104
+  s_4c8946ed4c6aa9::t_40c3307eaa0098 99,115-118
+  s_4c8946ed4c6aa9::t_36d4a9d0acdaa5 101-102,105
+  s_4c8946ed4c6aa9::t_8e0fbde438af70 170-172
+  s_4c8946ed4c6aa9::t_805bcd70bd7663 263-264
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "20bd178464d240817fd7688a37e47f8d94dffc30",
+  "prompts": {},
+  "sessions": {
+    "s_4c8946ed4c6aa9": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3b65b338-1075-4877-b0e5-db6f09789192",
+        "model": "claude-haiku-4-5-20251001"
+      },
+      "human_author": "Jainal Gosaliya <jainal09gosalia@gmail.com>"
+    }
+  }
+}
