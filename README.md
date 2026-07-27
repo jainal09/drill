@@ -64,6 +64,8 @@ ds day1        # open ~/drill/solves/day1.py in the isolated editor
                # Ctrl+E to run it in a live interpreter, Ctrl+E to come back
 ```
 
+![Demo of the drill environment](assets/drill-demo.gif)
+
 `Ctrl+E` is the entire interface to the interpreter. It shows it, and pressing
 it again hides it. **The interpreter always has the code you can see:** if you
 edited the file, it restarts python with the new code; if you didn't, you get
