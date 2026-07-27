@@ -157,6 +157,18 @@ Two smaller traps, both found the hard way:
 - Auto-insert is guarded by `jobwait(...) == -1`. Stepping into a *finished*
   run window in terminal mode is a trap: the next key just closes it.
 
+## Cursor
+
+One shape everywhere you type. Nvim's default is a vertical bar in insert
+(`i-ci-ve:ver25`) but a **block** in terminal mode, so the caret changed shape
+every time `Ctrl+E` moved you between the file and the interpreter. In an editor
+whose premise is that you are always typing, that reads as two different states.
+
+Only the shape is changed — the blink and the `TermCursor` highlight are kept,
+because they are what tell you python is still live. The `t:` entry is rewritten
+rather than appended: appending leaves two `t:` parts and relies on later-wins,
+which `:help guicursor` documents only for `a`, not for a repeated mode.
+
 ## Colours
 
 `colorscheme habamax`, built in — no plugin. Neovim's *default* scheme paints

@@ -23,6 +23,37 @@ vim.opt.undofile = false
 vim.opt.mouse = "a"                    -- select + scroll
 vim.opt.clipboard = "unnamedplus"      -- system clipboard (macOS: pbcopy/pbpaste)
 
+-- One cursor everywhere you type. Nvim's default is a vertical bar in insert
+-- (i-ci-ve:ver25) but a BLOCK in terminal mode, so the caret changed shape every
+-- time <C-e> moved you between the file and the interpreter -- in an editor whose
+-- whole premise is that you are always typing, that reads as two different
+-- states. Only the SHAPE changes: the blink and the TermCursor highlight are
+-- what tell you python is still live, so they are carried over untouched.
+--
+-- The t: entry is REWRITTEN rather than appended. Appending leaves two t: parts
+-- and relies on later-wins, which :help guicursor never actually promises (it
+-- documents the precedence of "a" and nothing else). Rewriting leaves exactly
+-- one answer in the option.
+do
+  local parts, done = {}, false
+  for part in vim.o.guicursor:gmatch("[^,]+") do
+    local modes, args = part:match("^([^:]+):(.*)$")
+    local is_term = false
+    if modes then
+      for m in modes:gmatch("[^%-]+") do if m == "t" then is_term = true end end
+    end
+    if is_term then
+      -- swap the shape token, keep blinkon/blinkoff/highlight exactly as they were
+      part, done = modes .. ":" .. args:gsub("^[^%-]+", "ver25", 1), true
+    end
+    parts[#parts + 1] = part
+  end
+  if not done then                                   -- no t: entry in this nvim
+    parts[#parts + 1] = "t:ver25-blinkon500-blinkoff500-TermCursor"
+  end
+  vim.o.guicursor = table.concat(parts, ",")
+end
+
 -- shift+arrows select, the way every other editor does it. Three options, and
 -- all three are needed:
 --   keymodel=startsel   a SHIFTED cursor key starts a selection

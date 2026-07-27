@@ -45,6 +45,7 @@ run() {                                  # run <label> <script> [env assignments
   return 0
 }
 
+run "config invariants"             suite_options.sh
 run "config regressions"            suite_config.sh
 
 # Ctrl+/ has no legacy control byte, so a terminal sends it EITHER as 0x1F

@@ -111,10 +111,13 @@ resolved: **[KEYS.md](KEYS.md)**.
 
 Every keybinding is asserted by driving the real config in headless Neovim,
 feeding real keycodes and diffing the resulting buffer. Nothing is mocked: if a
-case passes, that keystroke does that thing in this config.
+case passes, that keystroke does that thing in this config. A third suite
+asserts the settings this README makes promises about — that completion really
+is off at every source, and that `Ctrl+C` stays unmapped in normal and terminal
+mode so SIGINT still reaches a running program.
 
 ```sh
-./tests/run.sh            # 216 cases; exit 0 only if all pass
+./tests/run.sh            # 260 cases; exit 0 only if all pass
 ./tests/run.sh sel_       # just the select-mode cases
 ```
 
