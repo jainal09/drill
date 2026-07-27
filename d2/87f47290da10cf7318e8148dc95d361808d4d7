@@ -1,0 +1,28 @@
+nvimrc.lua
+  s_4c8946ed4c6aa9::t_ecd1a85888efa0 26-29,56
+  s_4c8946ed4c6aa9::t_f64e99374754e1 30-55
+tests/suite_options.sh
+  s_4c8946ed4c6aa9::t_b71a930873dd4e 1-99
+tests/run.sh
+  s_4c8946ed4c6aa9::t_5d5f0d9ca001cd 48
+KEYS.md
+  s_4c8946ed4c6aa9::t_09cb80afe562c6 160-171
+README.md
+  s_4c8946ed4c6aa9::t_778a22665edb09 114-117,120
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "d287f47290da10cf7318e8148dc95d361808d4d7",
+  "prompts": {},
+  "sessions": {
+    "s_4c8946ed4c6aa9": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3b65b338-1075-4877-b0e5-db6f09789192",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jainal Gosaliya <jainal09gosalia@gmail.com>"
+    }
+  }
+}
