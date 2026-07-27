@@ -120,7 +120,7 @@ local function toggle_comment()
   end
 end
 
-map({ "n", "v", "s" }, "<C-/>", toggle_comment, S)
+map({ "n", "v", "s" }, "<leader>/", toggle_comment, S)  -- comment/uncomment (Space+/)
 
 -- CONFLICT 3: <C-z> is suspend by default. Mapped in every mode that can reach
 -- nvim's own suspend, so the editor cannot be accidentally backgrounded.
