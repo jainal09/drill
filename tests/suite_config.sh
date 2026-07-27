@@ -83,6 +83,18 @@ echo "=== undo ==="
 t undo_ctrl_z_reverts_typing \
    --content 'alpha bravo' --keys "${SEL5}Z<Esc><C-z>" --expect 'alpha bravo'
 
+# Ctrl+Shift+Z redo. Only distinguishable from Ctrl+Z under CSI-u: legacy
+# terminals drop Shift from a control chord and send 0x1A for both.
+t redo_ctrl_shift_z \
+   --content 'base' --keys 'XY<C-z><C-S-z><Esc>' --expect 'XYbase'
+
+t redo_ctrl_y_still_works \
+   --content 'base' --keys 'XY<C-z><C-y><Esc>' --expect 'XYbase'
+
+t undo_then_no_redo_stays_undone \
+   --content 'base' --keys 'XY<C-z><Esc>' --expect 'base'
+
+
 echo
 echo "=== <C-c> copies without losing the selection ==="
 # REGRESSION: the '<C-g>"+ygv<C-g>' spelling yanked correctly and then typed the

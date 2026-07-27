@@ -286,6 +286,13 @@ end
 -- nvim's own suspend, so the editor cannot be accidentally backgrounded.
 map({ "n", "v", "i" }, "<C-z>", "<Cmd>undo<CR>", S)
 map({ "n", "v", "i" }, "<C-y>", "<Cmd>redo<CR>", S)
+-- Ctrl+Shift+Z is the redo every other editor uses, and it only exists at all
+-- because of CSI-u: in the legacy encoding Shift is dropped from a control chord,
+-- so Ctrl+Shift+Z and Ctrl+Z are both 0x1A and cannot be told apart. With the
+-- protocol negotiated they are separate keys -- "\128\252\2\26" vs "\26" -- so
+-- this is a real mapping, not a duplicate. On a terminal that speaks no CSI-u it
+-- degrades to <C-z> and undoes instead; <C-y> is the redo that always works.
+map({ "n", "v", "i" }, "<C-S-z>", "<Cmd>redo<CR>", S)
 
 -- CONFLICT 6: on a Mac the big key labelled "delete" sends <BS>; <Del> is
 -- fn+delete. Mapping only <Del> is why Ctrl+A then delete did nothing -- <BS>

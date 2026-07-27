@@ -98,12 +98,13 @@ Normal-editor keys, because fighting your muscle memory is not the skill being
 practised here:
 
 `Ctrl+S` save · `Ctrl+C/X/V` copy/cut/paste · `Ctrl+A` select all ·
-`Ctrl+Z/Y` undo/redo · `Ctrl+F` find · `Ctrl+/` comment ·
+`Ctrl+Z` undo · `Ctrl+Y` / `Ctrl+Shift+Z` redo · `Ctrl+F` find ·
+`Ctrl+/` comment ·
 **Shift+arrows select** · `Ctrl+Q` visual block
 
 Everything else is still vim: `hjkl`, `dd`, `ciw`, `.`, macros, `:%s/…`.
 
-Full reference, including all eight keybinding conflicts and how each is
+Full reference, including all nine keybinding conflicts and how each is
 resolved: **[KEYS.md](KEYS.md)**.
 
 ## Tests
@@ -113,7 +114,7 @@ feeding real keycodes and diffing the resulting buffer. Nothing is mocked: if a
 case passes, that keystroke does that thing in this config.
 
 ```sh
-./tests/run.sh            # 213 cases; exit 0 only if all pass
+./tests/run.sh            # 216 cases; exit 0 only if all pass
 ./tests/run.sh sel_       # just the select-mode cases
 ```
 

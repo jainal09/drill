@@ -17,6 +17,7 @@ Syntax highlighting only. No completion, no LSP, no snippets, no AI.
 | `Ctrl+/` | comment / uncomment the line or the selected lines | normal, insert, visual, selection |
 | `Ctrl+Z` | undo | normal, insert, visual |
 | `Ctrl+Y` | redo | normal, insert, visual |
+| `Ctrl+Shift+Z` | redo (needs a terminal that speaks CSI-u) | normal, insert, visual |
 | `Ctrl+Q` | visual block (was `Ctrl+V`) | normal, visual |
 | **Shift+arrows** | **select, like any other editor** | normal, insert |
 | `Delete` / `Backspace` | delete the selection and keep typing | selection |
@@ -140,6 +141,13 @@ Every one of these was a real collision, not a hypothetical.
    mapping written for one is never reached by the other, and an *unmapped*
    `<C-/>` degrades to a bare `/`, which the printable-key Select map below then
    types over your selection. All three spellings are bound, in four modes each.
+
+9. **`Ctrl+Shift+Z` only exists under CSI-u.** The legacy encoding drops Shift
+   from a control chord, so `Ctrl+Shift+Z` and `Ctrl+Z` are both `0x1A` and are
+   genuinely indistinguishable. With the protocol negotiated they separate into
+   `"\128\252\2\26"` and `"\26"`, so the redo mapping is real. On a terminal
+   without it, `Ctrl+Shift+Z` falls back to `Ctrl+Z` and *undoes* — which is why
+   `Ctrl+Y` is kept as the redo that works everywhere.
 
 Two smaller traps, both found the hard way:
 
