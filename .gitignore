@@ -9,3 +9,6 @@ log.md
 __pycache__/
 *.pyc
 .DS_Store
+
+# headless test harness scratch
+tests/work/

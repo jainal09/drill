@@ -1,0 +1,4 @@
+#!/bin/sh
+# Minimal GNU-timeout stand-in for macOS (no coreutils here).
+# usage: timeout <seconds> <cmd> [args...]
+exec perl -e 'my $s=shift; alarm $s; exec @ARGV or die "exec: $!\n";' "$@"

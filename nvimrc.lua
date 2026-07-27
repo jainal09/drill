@@ -69,8 +69,29 @@ map({ "n", "v", "i" }, "<C-s>", save, S)
 -- CONFLICT 4: <C-c> is remapped ONLY in visual/select and insert. Normal and
 -- terminal mode are left alone, so SIGINT still reaches anything running in a
 -- terminal split.
-map("x", "<C-c>", '"+ygv', S)            -- copy to system clipboard, keep selection
-map("s", "<C-c>", '<C-g>"+ygv<C-g>', S)  -- copy in select mode, stay in select
+-- Copy WITHOUT losing the selection. The obvious spelling, '"+ygv', cannot work:
+-- y ENDS visual mode, so gv has to put it back, and in Select mode the round
+-- trip needs <C-g> either side. Feeding those keys is what typed a literal "gv"
+-- into the buffer -- this config's deferred :startinsert can land mid-sequence,
+-- and from Insert mode "gv" is just two characters. A Lua callback never
+-- changes mode at all, so there is nothing to restore.
+local function copy_selection()
+  local m = vim.fn.mode(1):sub(1, 1)
+  local rt = "v"                                   -- charwise
+  if m == "V" or m == "S" then rt = "V"            -- linewise
+  elseif m == "\22" or m == "\19" then rt = "b" end -- blockwise
+  local a, b = vim.fn.getpos("v"), vim.fn.getpos(".")
+  local ok, txt = pcall(vim.fn.getregion, a, b,
+                        { type = rt, exclusive = vim.o.selection == "exclusive" })
+  if not ok then                                   -- older nvim: no 'exclusive' opt
+    ok, txt = pcall(vim.fn.getregion, a, b, { type = rt })
+  end
+  if ok and type(txt) == "table" and #txt > 0 then
+    vim.fn.setreg("+", txt, rt)
+    vim.fn.setreg('"', txt, rt)
+  end
+end
+map({ "x", "s" }, "<C-c>", copy_selection, S)  -- copy, selection stays put
 map("i", "<C-c>", "<Esc>", S)          -- stays Esc, as asked
 
 map("x", "<C-x>", '"+d', S)            -- cut
@@ -96,30 +117,170 @@ map("i", "<C-a>", "<C-o>gg<C-o>gH<C-o>G", S)
 map("n", "<C-f>", "/", L)              -- find
 map("i", "<C-f>", "<Esc>/", L)
 
--- toggle comment on line(s)
-local toggle_comment = function()
-  local start = vim.fn.getpos("'<")[2]
-  local finish = vim.fn.getpos("'>")[2]
-  if start == nil then start = vim.fn.line(".") end
-  if finish == nil then finish = vim.fn.line(".") end
-  for lnum = start, finish do
-    local line = vim.fn.getline(lnum)
-    if vim.fn.match(line, "^\\s*#") == 0 then
-      vim.fn.setline(lnum, vim.fn.substitute(line, "^\\(\\s*\\)# ?", "\\1", ""))
-    else
-      vim.fn.setline(lnum, vim.fn.substitute(line, "^\\(\\s*\\)", "\\1# ", ""))
+-- ---------------------------------------------------------------------------
+-- toggle comment on line(s)  --  Ctrl+/
+--
+-- Three separate things were wrong before, and all three had to be fixed:
+--   1. THE KEY. Ctrl+/ has no legacy control byte, so a terminal sends it EITHER
+--      as 0x1F (nvim spells that <C-_>) OR, when the kitty/CSI-u keyboard
+--      protocol is negotiated, as ESC [ 47 ; 5 u (nvim spells that <C-/>).
+--      Those are two different keys -- "\31" vs "\128\252\4/" -- not aliases:
+--      a <C-_> mapping is NEVER reached by <C-/>. iTerm2 3.6.10 + nvim 0.12.4
+--      do negotiate CSI-u, so on this machine only <C-/> arrives; unmapped, its
+--      Ctrl was stripped and the bare "/" fell into the printable-key Select
+--      map below and replaced the selection. Bind BOTH (plus <C-S-/>).
+--   2. THE MODE. This editor opens every file with :startinsert, so a toggle
+--      bound only to n/x/s can never be reached. "i" is mandatory. And <Space>
+--      is unusable as a leader here for the same reason: char 32 is in the
+--      printable-key Select loop, so <leader>/ eats the selection on the Space.
+--   3. THE RANGE. '< and '> are only written when you LEAVE visual/select mode.
+--      Read inside a mapping they still describe the PREVIOUS selection, which
+--      is why the toggle kept commenting text that was selected a moment ago.
+--      line("v") (anchor) and line(".") (cursor) are live; use those.
+-- Everything below is buffer-API only: no :normal!, no mode changes, nothing
+-- typed. That is what keeps the selection -- and Insert mode -- intact.
+-- ---------------------------------------------------------------------------
+
+-- 'commentstring' is "# %s" for python, "-- %s" for lua, "<!-- %s -->" for html.
+-- A buffer with none at all (a plain .txt) falls back to "#".
+local function comment_parts()
+  local cs = vim.bo.commentstring
+  if type(cs) ~= "string" or not cs:find("%%s") then cs = "# %s" end
+  local l, r = cs:match("^(.-)%%s(.*)$")
+  l, r = vim.trim(l or ""), vim.trim(r or "")
+  if l == "" then l = "#" end
+  return l, r
+end
+
+-- "#" and "--" and "<!--" all contain Lua pattern metacharacters.
+local function lit(s) return (s:gsub("[%^%$%(%)%%%.%[%]%*%+%-%?]", "%%%1")) end
+
+local VISUAL_OR_SELECT = {
+  v = true, V = true, ["\22"] = true,   -- \22 = 0x16 = CTRL-V, visual blockwise
+  s = true, S = true, ["\19"] = true,   -- \19 = 0x13 = CTRL-S, select blockwise
+}
+
+-- The LIVE line span, the mode it came from, and "is there a selection".
+-- selection=exclusive means a selection that stops at column 1 of a line covers
+-- NOTHING on that line -- shift+down once highlights only the line you started
+-- on -- so that line is not commented either. Exactly the lines you can see
+-- highlighted are the lines that change. (Only charwise: a blockwise selection
+-- at column 1 really is one column wide, and linewise has no columns at all.)
+local function live_range()
+  local m = vim.fn.mode(1):sub(1, 1)
+  if not VISUAL_OR_SELECT[m] then
+    local l = vim.fn.line(".")
+    return l, l, false, m
+  end
+  local al, ac = vim.fn.line("v"), vim.fn.col("v")
+  local cl, cc = vim.fn.line("."), vim.fn.col(".")
+  local lo, hi, hicol
+  if al < cl or (al == cl and ac <= cc) then lo, hi, hicol = al, cl, cc
+  else lo, hi, hicol = cl, al, ac end
+  if (m == "v" or m == "s") and vim.o.selection == "exclusive"
+     and hi > lo and hicol == 1 then
+    hi = hi - 1
+  end
+  return lo, hi, true, m
+end
+
+local function toggle_comment()
+  -- the REPL split is a terminal buffer: 'modifiable' is off there, and you can
+  -- be sitting in it in Normal mode (<C-w>k, or the mouse). Without this guard
+  -- Ctrl+/ raises E5108 "Buffer is not 'modifiable'" at you.
+  if not vim.bo.modifiable then return end
+
+  local lo, hi, selecting, mode = live_range()
+  local lines = vim.api.nvim_buf_get_lines(0, lo - 1, hi, false)
+  if #lines == 0 then return end
+
+  local left, right = comment_parts()
+  local open  = left .. " "
+  local close = right ~= "" and (" " .. right) or ""
+
+  -- Which lines actually get touched: the ones with code on them. A blank line
+  -- inside a block is left alone, so a round trip is byte-for-byte exact and
+  -- you do not get trailing "# " litter. (If the whole range is blank there is
+  -- nothing to skip, so every line counts -- Ctrl+/ on an empty line still
+  -- starts a comment for you.)
+  local idx = {}
+  for i, l in ipairs(lines) do if l:find("%S") then idx[#idx + 1] = i end end
+  if #idx == 0 then for i = 1, #lines do idx[i] = i end end
+
+  -- ONE indent for the whole block: the smallest one. Per-line indentation
+  -- would break the column alignment of nested code the moment you uncomment.
+  local pad
+  for _, i in ipairs(idx) do
+    local ws = lines[i]:match("^[ \t]*")
+    if pad == nil or #ws < #pad then pad = ws end
+  end
+  pad = pad or ""
+
+  -- Mixed block rule: uncomment ONLY if every code line is already commented;
+  -- one bare line anywhere and the whole block gets commented. That is what
+  -- makes Ctrl+/ twice a guaranteed no-op on any block, mixed or not -- the
+  -- first press always lands the block in a uniform state.
+  local commented = "^[ \t]*" .. lit(left)
+  local uncomment = true
+  for _, i in ipairs(idx) do
+    if not lines[i]:find(commented) then uncomment = false break end
+  end
+
+  local function apply(l)
+    if not uncomment then
+      -- l:sub(1, #pad), NOT pad: every touched line has at least #pad leading
+      -- whitespace, but it may not be the SAME whitespace. Splicing the block's
+      -- pad string in would rewrite this line's own indent -- with a tab line
+      -- and an 8-space line in one block that silently turned "        y = 1"
+      -- into "\t       y = 1". Reuse the line's own bytes and the round trip
+      -- stays exact.
+      return l:sub(1, #pad) .. open .. l:sub(#pad + 1) .. close
+    end
+    l = (l:gsub("^([ \t]*)" .. lit(left) .. "[ \t]?", "%1", 1))
+    if right ~= "" then l = (l:gsub("[ \t]?" .. lit(right) .. "[ \t]*$", "", 1)) end
+    return l
+  end
+
+  local shift = {}                        -- per-line character delta
+  for i = 1, #lines do shift[i] = 0 end
+  for _, i in ipairs(idx) do
+    local new = apply(lines[i])
+    shift[i] = #new - #lines[i]
+    lines[i] = new
+  end
+  vim.api.nvim_buf_set_lines(0, lo - 1, hi, false, lines)
+
+  -- Keep the caret on the same CHARACTER. The edit is a pure insert/delete at
+  -- character offset #pad, so anything at or past that offset moves by the
+  -- line's delta. Nothing here leaves Insert mode -- a Lua-callback mapping
+  -- does not change mode -- so the user is still typing, one marker along.
+  --
+  -- With a CHARWISE selection this is also what keeps the text you highlighted
+  -- inside the highlight: the anchor cannot be moved (setpos("v", ...) raises
+  -- E474), so moving the cursor end is the closest reachable answer. Skipped
+  -- for LINEWISE (columns are irrelevant) and BLOCKWISE (the column IS the
+  -- block width -- shifting it would silently widen your block).
+  if (not selecting) or mode == "v" or mode == "s" then
+    local pos = vim.api.nvim_win_get_cursor(0)
+    local row, col = pos[1], pos[2]       -- col is 0-based
+    if row >= lo and row <= hi then
+      if col >= #pad then col = col + (shift[row - lo + 1] or 0) end
+      local len = #(vim.api.nvim_buf_get_lines(0, row - 1, row, false)[1] or "")
+      if col < 0 then col = 0 elseif col > len then col = len end
+      pcall(vim.api.nvim_win_set_cursor, 0, { row, col })
     end
   end
 end
 
--- Ctrl+/ - try both possible keycodes with noremap to skip char replacement
-vim.keymap.set("n", "<C-_>", toggle_comment, S)
-vim.keymap.set("x", "<C-_>", toggle_comment, S)
--- For select mode, exit to visual, toggle, stay visual
-vim.keymap.set("s", "<C-_>", function()
-  vim.cmd("normal! \\<C-g>")
-  toggle_comment()
-end, S)
+-- "x" and "s" are registered separately and never as "v": one combined "v"
+-- mapping makes nvim switch Select -> Visual BEFORE the callback runs.
+-- Deliberately NOT bound in "t" (terminal), so Ctrl+/ still reaches python in
+-- the <C-e> REPL split, nor in "c" (cmdline).
+for _, key in ipairs({ "<C-_>", "<C-/>", "<C-S-/>" }) do
+  for _, mode in ipairs({ "n", "i", "x", "s" }) do
+    map(mode, key, toggle_comment, S)
+  end
+end
 
 -- CONFLICT 3: <C-z> is suspend by default. Mapped in every mode that can reach
 -- nvim's own suspend, so the editor cannot be accidentally backgrounded.

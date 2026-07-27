@@ -98,13 +98,47 @@ Normal-editor keys, because fighting your muscle memory is not the skill being
 practised here:
 
 `Ctrl+S` save Â· `Ctrl+C/X/V` copy/cut/paste Â· `Ctrl+A` select all Â·
-`Ctrl+Z/Y` undo/redo Â· `Ctrl+F` find Â· **Shift+arrows select** Â·
-`Ctrl+Q` visual block
+`Ctrl+Z/Y` undo/redo Â· `Ctrl+F` find Â· `Ctrl+/` comment Â·
+**Shift+arrows select** Â· `Ctrl+Q` visual block
 
 Everything else is still vim: `hjkl`, `dd`, `ciw`, `.`, macros, `:%s/â€¦`.
 
-Full reference, including all seven keybinding conflicts and how each is
+Full reference, including all eight keybinding conflicts and how each is
 resolved: **[KEYS.md](KEYS.md)**.
+
+## Tests
+
+Every keybinding is asserted by driving the real config in headless Neovim,
+feeding real keycodes and diffing the resulting buffer. Nothing is mocked: if a
+case passes, that keystroke does that thing in this config.
+
+```sh
+./tests/run.sh            # 213 cases; exit 0 only if all pass
+./tests/run.sh sel_       # just the select-mode cases
+```
+
+Run it before you push. It exists because four different "fixes" to `Ctrl+/`
+shipped broken in a row, each one plausible and none of them ever actually
+pressed. Three of the bugs it now guards against were invisible by inspection:
+
+- `<C-/>` and `<C-_>` are **different keys** to Neovim (`80 FC 04 2F` vs `1F`),
+  so a mapping written for one is never reached by the other. Which one your
+  terminal sends depends on whether it negotiates the CSI-u keyboard protocol,
+  so all three spellings are bound.
+- `'<` and `'>` are only written when you **leave** visual/select mode. Read from
+  inside a mapping they still describe the *previous* selection. Use `line("v")`
+  and `line(".")`, which are live.
+- In Lua, `vim.cmd("normal! \<C-g>")` passes the literal six characters
+  `\<C-g>`; only Vimscript's `:execute` interprets that notation. In select mode
+  it types them into your file.
+
+`Ctrl+/` is bound in insert mode too, which matters more here than anywhere
+else: this editor puts you in insert mode on every file, so a mapping bound only
+to normal and visual is unreachable by design.
+
+See [tests/NOTES.md](tests/NOTES.md) for the harness mechanics — in particular
+why keys need `feedkeys` mode `xt`, and why the deferred `:startinsert` swallows
+the first keystroke if you don't disarm it.
 
 ## Verify it's really doing nothing
 
@@ -128,6 +162,7 @@ And confirm it left your own setup alone: run plain `nvim` and check
   nvimrc.lua      the isolated editor
   drill.sh        the shell commands
   KEYS.md         keybinding reference
+  tests/          headless keybinding tests -- ./tests/run.sh
   templates/      pattern skeletons
   solves/         daily attempts
   scratch/        throwaway

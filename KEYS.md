@@ -14,6 +14,7 @@ Syntax highlighting only. No completion, no LSP, no snippets, no AI.
 | `Ctrl+V` | paste (replaces the selection if there is one) | normal, insert, selection, command |
 | `Ctrl+A` | select all | normal, insert |
 | `Ctrl+F` | find (opens `/`) | normal, insert |
+| `Ctrl+/` | comment / uncomment the line or the selected lines | normal, insert, visual, selection |
 | `Ctrl+Z` | undo | normal, insert, visual |
 | `Ctrl+Y` | redo | normal, insert, visual |
 | `Ctrl+Q` | visual block (was `Ctrl+V`) | normal, visual |
@@ -130,6 +131,15 @@ Every one of these was a real collision, not a hypothetical.
    restores the mapping's original mode on the way out and clobbers it. Since
    `Ctrl+E` is pressed mid-typing, every auto-insert is deferred past the end of
    the mapping with `vim.schedule`.
+8. **`Ctrl+/` has no legacy control byte, so it arrives as one of two different
+   keys.** `Ctrl+A` folds to `0x01` and `Ctrl+[` to `0x1B`, but `/` has no such
+   pairing — `0x2F & 0x1F` is `0x0F`, which is already `Ctrl+O`. So a terminal
+   sends `Ctrl+/` either as `0x1F` (nvim spells that `<C-_>`) or, once the CSI-u
+   keyboard protocol is negotiated, as `ESC [ 47 ; 5 u` (`<C-/>`). Nvim treats
+   those as **two different keys** — `"\31"` versus `"\128\252\4/"` — so a
+   mapping written for one is never reached by the other, and an *unmapped*
+   `<C-/>` degrades to a bare `/`, which the printable-key Select map below then
+   types over your selection. All three spellings are bound, in four modes each.
 
 Two smaller traps, both found the hard way:
 

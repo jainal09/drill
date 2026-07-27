@@ -1,0 +1,118 @@
+#!/bin/bash
+# ============================================================================
+#  run_suite.sh -- regression suite for ~/drill/nvimrc.lua
+#
+#  Every case below asserts behaviour that was OBSERVED in the config as it
+#  ships today (see NOTES.md).
+#
+#  usage:  ./suite_config.sh          run everything
+#          ./suite_config.sh sel_     run cases whose name contains "sel_"
+# ============================================================================
+set -uo pipefail
+DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+R="$DIR/run_test.sh"
+FILTER="${1:-}"
+
+PASS=0; FAIL=0; ERR=0; SKIP=0
+declare -a FAILED=()
+
+t() { # t <name> <args...>
+  local name="$1"; shift
+  if [ -n "$FILTER" ] && [[ "$name" != *"$FILTER"* ]]; then SKIP=$((SKIP+1)); return; fi
+  "$R" --name "$name" "$@"
+  case $? in
+    0) PASS=$((PASS+1)) ;;
+    1) FAIL=$((FAIL+1)); FAILED+=("$name") ;;
+    *) ERR=$((ERR+1));  FAILED+=("$name (ERROR)") ;;
+  esac
+}
+
+SEL5='<S-Right><S-Right><S-Right><S-Right><S-Right>'   # selects "alpha"
+
+echo "=== select-mode basics (the printable-char loop, lines 149-153) ==="
+
+t sel_printable_replaces \
+   --content 'alpha bravo' --keys "${SEL5}Z" --expect 'Z bravo'
+
+t sel_space_replaces \
+   --content 'alpha bravo' --keys "${SEL5} " --expect '  bravo'
+
+t sel_lt_replaces \
+   --content 'alpha bravo' --keys "${SEL5}<" --expect '< bravo'
+
+t sel_bar_replaces \
+   --content 'alpha bravo' --keys "${SEL5}|" --expect '| bravo'
+
+t sel_typing_does_not_clobber_clipboard \
+   --content 'alpha bravo' --keys "${SEL5}Z" --expect 'Z bravo' --expect-reg '+='
+
+echo
+echo "=== shift+arrow selection across lines ==="
+
+t sel_shift_down_two_lines_replace \
+   --content 'alpha\nbravo\ncharlie' --keys '<S-Down><S-Down>Z' \
+   --expect 'Zcharlie'
+
+t sel_backspace_deletes_selection \
+   --content 'alpha bravo' --keys "${SEL5}<BS>" --expect ' bravo'
+
+echo
+echo "=== cut / paste / select-all ==="
+
+t cut_ctrl_x_in_select \
+   --content 'alpha bravo' --keys "${SEL5}<C-x>" --expect ' bravo' --expect-reg '+=alpha'
+
+t cut_ctrl_x_leaves_you_typing \
+   --content 'alpha bravo' --keys "${SEL5}<C-x>Z" --expect 'Z bravo'
+
+t select_all_ctrl_a_then_type \
+   --content 'alpha\nbravo\ncharlie' --keys '<C-a>Z' --expect 'Z'
+
+# <C-x> leaves you in INSERT mode, so this exercises the i_<C-v> mapping.
+t paste_ctrl_v_insert_roundtrip \
+   --content 'alpha bravo' --keys "${SEL5}<C-x><C-v>" --expect 'alpha bravo'
+
+# ...and this one exercises the s_<C-v> mapping (paste OVER a selection).
+t paste_ctrl_v_over_selection \
+   --content 'one two' --keys '<S-Right><S-Right><S-Right><C-x><S-Right><C-v>' \
+   --expect 'onetwo'
+
+echo
+echo "=== undo ==="
+
+t undo_ctrl_z_reverts_typing \
+   --content 'alpha bravo' --keys "${SEL5}Z<Esc><C-z>" --expect 'alpha bravo'
+
+echo
+echo "=== <C-c> copies without losing the selection ==="
+# REGRESSION: the '<C-g>"+ygv<C-g>' spelling yanked correctly and then typed the
+# literal characters 'gv' into the buffer. y ends visual mode, so gv has to put
+# it back -- and this config's deferred :startinsert can land mid-sequence, at
+# which point 'gv' is just two letters. The fix is a Lua callback that never
+# changes mode. Keep this case: it is cheap and it caught a real data bug.
+
+t ctrlc_select_copies_and_keeps_selection \
+   --content 'alpha bravo' --keys "${SEL5}<C-c>Z" --expect 'Z bravo' --expect-reg '+=alpha'
+
+t ctrlc_does_not_mutate_buffer \
+   --content 'alpha bravo' --keys "${SEL5}<C-c><Esc>" --expect 'alpha bravo'
+
+# charwise + selection=exclusive: the copy must match exactly what d deletes
+t ctrlc_visual_charwise_exclusive --start normal \
+   --content 'alpha bravo' --keys '0v5l<C-c>d' --expect ' bravo' --expect-reg '+=alpha'
+
+t ctrlc_visual_linewise --start normal \
+   --content 'aa\nbb\ncc' --keys 'ggVj<C-c>d' --expect 'cc' --expect-reg '+=aa
+bb'
+
+t ctrlc_select_linewise \
+   --content 'aa\nbb\ncc' --keys '<S-Down><S-Down><C-c>Z' --expect 'Zcc' --expect-reg '+=aa
+bb'
+
+echo
+echo "=========================================================="
+printf 'PASS=%d  FAIL=%d  ERROR=%d  SKIPPED=%d\n' "$PASS" "$FAIL" "$ERR" "$SKIP"
+if [ "${#FAILED[@]}" -gt 0 ]; then
+  printf 'failing: %s\n' "${FAILED[*]}"
+fi
+[ "$FAIL" -eq 0 ] && [ "$ERR" -eq 0 ]
