@@ -112,10 +112,14 @@ local toggle_comment = function()
   end
 end
 
--- Try Ctrl+/ - works in normal, visual, and select modes
-for _, keys in ipairs({ "<C-/>", "<C-_>" }) do
-  pcall(function() map({ "n", "x", "s" }, keys, toggle_comment, S) end)
-end
+-- Ctrl+/ - try both possible keycodes with noremap to skip char replacement
+vim.keymap.set("n", "<C-_>", toggle_comment, S)
+vim.keymap.set("x", "<C-_>", toggle_comment, S)
+-- For select mode, exit to visual, toggle, stay visual
+vim.keymap.set("s", "<C-_>", function()
+  vim.cmd("normal! \\<C-g>")
+  toggle_comment()
+end, S)
 
 -- CONFLICT 3: <C-z> is suspend by default. Mapped in every mode that can reach
 -- nvim's own suspend, so the editor cannot be accidentally backgrounded.
