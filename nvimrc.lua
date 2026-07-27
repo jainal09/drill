@@ -146,9 +146,9 @@ local function type_here()
       -- FINISHED process is a trap: the next key just closes the window.
       local id = vim.b.terminal_job_id
       if id and vim.fn.jobwait({ id }, 0)[1] == -1 then vim.cmd("startinsert") end
-    elseif vim.bo.buftype == "" and vim.bo.modifiable
-       and vim.bo.filetype ~= "netrw" then            -- `d` with no arg: a listing,
-      vim.cmd("startinsert")                          -- where every letter is a command
+    elseif from_term and vim.bo.buftype == "" and vim.bo.modifiable
+       and vim.bo.filetype ~= "netrw" then
+      vim.cmd("startinsert")
     end
   end)
 end
