@@ -1,0 +1,27 @@
+README.md
+  s_4c8946ed4c6aa9::t_fb668fb1000634 101-102,117
+  s_4c8946ed4c6aa9::t_b3e82754ff1590 107
+KEYS.md
+  s_4c8946ed4c6aa9::t_fb668fb1000634 20
+  s_4c8946ed4c6aa9::t_67aed0bb15ffc3 145-151
+tests/suite_config.sh
+  s_4c8946ed4c6aa9::t_6d6b616c59dbc0 86-97
+nvimrc.lua
+  s_4c8946ed4c6aa9::t_93f120099d861e 289-295
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "929f76c0d1a5627c1580c892200fe5af4658e69d",
+  "prompts": {},
+  "sessions": {
+    "s_4c8946ed4c6aa9": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3b65b338-1075-4877-b0e5-db6f09789192",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jainal Gosaliya <jainal09gosalia@gmail.com>"
+    }
+  }
+}
