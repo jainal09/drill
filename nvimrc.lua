@@ -69,8 +69,8 @@ map({ "n", "v", "i" }, "<C-s>", save, S)
 -- CONFLICT 4: <C-c> is remapped ONLY in visual/select and insert. Normal and
 -- terminal mode are left alone, so SIGINT still reaches anything running in a
 -- terminal split.
-map("x", "<C-c>", '"+y', S)            -- copy to system clipboard
-map("s", "<C-c>", '<C-g>"+y', S)
+map("x", "<C-c>", '"+ygv', S)            -- copy to system clipboard, keep selection
+map("s", "<C-c>", '<C-g>"+ygv<C-g>', S)  -- copy in select mode, stay in select
 map("i", "<C-c>", "<Esc>", S)          -- stays Esc, as asked
 
 map("x", "<C-x>", '"+d', S)            -- cut
