@@ -7,7 +7,7 @@ Syntax highlighting only. No completion, no LSP, no snippets, no AI.
 
 | Key | Does | Where |
 |---|---|---|
-| `Ctrl+S` | save | normal, insert, visual |
+| `Ctrl+S` | save now (the file also saves itself) | normal, insert, visual |
 | `Ctrl+C` | copy to system clipboard | **selection only** |
 | `Ctrl+C` | Esc | insert |
 | `Ctrl+X` | cut to system clipboard | selection |
@@ -83,6 +83,22 @@ release all behave as if you had not held it. `Ctrl+Q` is still how you ask for
 a block on purpose. Shift+click still extends a selection, as it does anywhere
 else.
 
+**Auto-save.** You do not have to press `Ctrl+S`. The file writes itself about
+0.7s after you stop typing, and again the moment you leave insert, switch away,
+or quit. `Ctrl+S` still works and is still instant — it is just no longer
+something you have to remember.
+
+Only real files: the interpreter split, the directory listing and any buffer
+with no filename are left alone. A burst of typing costs one write, not one per
+keystroke (measured: 30 keystrokes, 2 writes).
+
+**The one consequence, and it is a real one:** `:qa!` no longer discards
+anything. It used to mean "quit and throw away what I typed"; now what you typed
+is already on disk, so a botched drill is saved like any other. If you want a
+clean slate, delete the file or `Ctrl+Z` your way back before quitting. To turn
+auto-save off, delete the two `nvim_create_autocmd` blocks under
+"Auto-save" in `nvimrc.lua` — `Ctrl+S` alone works exactly as it always did.
+
 **Find** (`Ctrl+F`) lights up every match and drops you on the first one, in
 Normal mode, so `n` and `N` walk the matches with the highlight still on. The
 moment you go back to typing, the highlight clears — `hlsearch` is on by nvim
@@ -145,7 +161,7 @@ goes to python.
 
 | Command | Does |
 |---|---|
-| `:qa!` | quit everything, discard unsaved, kill a running REPL |
+| `:qa!` | quit everything and kill a running REPL (with auto-save on there is nothing left to discard) |
 | `:wqa` | save all + quit — **refuses while `python3 -i` is still running** |
 | `Ctrl+D` then `:wqa` | quit the REPL first, then this works cleanly |
 | `:q` / `:wq` / `ZZ` | closes **one window** only — leaves the split behind |

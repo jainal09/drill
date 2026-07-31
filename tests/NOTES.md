@@ -132,7 +132,31 @@ Two further traps that suite is built around:
   after a search you opened and cancelled without ever searching, but the `/`
   register is empty then, so nothing is drawn. The honest measure is the pair.
 
-### 10. Bad probe keys to avoid
+### 10. A write inside an autocmd fires no BufWritePost
+
+Autocommands do not trigger other autocommands unless declared `nested = true`.
+The autosave calls `:update` from inside a `TextChangedI`/`InsertLeave`
+callback, so a `BufWritePost` counter registered by a test reads **0** while the
+file is demonstrably being written. Do not conclude from a zero counter that
+nothing was saved -- check the bytes on disk.
+
+### 11. Autosave debounce: pty only
+
+The coalescing cannot be asserted headlessly. `feedkeys 'xt'` force-ends Insert
+when the typeahead drains, firing `InsertLeave`, which saves immediately -- so
+the file is written at once regardless of the timer -- and `'xt!'` hangs (#2).
+Measured in a pty instead, staying in Insert throughout, typing 30 characters
+40 ms apart:
+
+```
+right after the burst -> writes = 1   mode = i
+after the pause       -> writes = 2   mode = i
+```
+
+2 writes for 30 keystrokes (two because a 1.2 s burst outlives the 700 ms
+window). Without the debounce it would be 30.
+
+### 12. Bad probe keys to avoid
 
 `ZZ` in Normal mode is write-and-quit — an early probe silently exited nvim
 before it could log anything. `Q` raises `E354`.

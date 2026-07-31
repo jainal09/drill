@@ -101,6 +101,57 @@ local function save()
 end
 map({ "n", "v", "i" }, "<C-s>", save, S)
 
+-- ---------------------------------------------------------------------------
+-- Auto-save  --  so <C-s> is something you never have to remember
+--
+-- CONFLICT 9: the recipe everyone posts for this is an InsertLeave autocmd, and
+-- in THIS config it would essentially never fire. Every other editor's autosave
+-- leans on you leaving insert mode regularly; here :startinsert is the resting
+-- state and you can drill for an hour without leaving it once. The event that
+-- actually tracks "the code changed" while you are typing is TextChangedI.
+--
+-- Which is also why it has to be DEBOUNCED. TextChangedI fires on every single
+-- keystroke, and writing the file per character is a syscall per character. A
+-- generation counter is enough: each change schedules a write and invalidates
+-- the one before it, so a burst of typing costs exactly one write, AUTOSAVE_MS
+-- after you pause. vim.defer_fn, not a uv timer -- nothing to close, nothing to
+-- leak, and no 0.10-only vim.uv on a config that claims to run on 0.9.
+--
+-- :update, not :write -- it is a no-op when the buffer is not modified, so the
+-- pause after every word does not keep re-writing an unchanged file.
+--
+-- What it deliberately does NOT touch: the interpreter split (a terminal
+-- buffer), the netrw listing, and any buffer with no filename -- :w with no
+-- name raises E32, which would pop an error at you mid-keystroke. Those are the
+-- same three exclusions the click handler makes, for the same reason.
+-- ---------------------------------------------------------------------------
+local AUTOSAVE_MS = 700
+local autosave_gen = 0
+
+local function autosave_now()
+  if vim.bo.buftype ~= "" or not vim.bo.modifiable then return end
+  if vim.bo.filetype == "netrw" then return end
+  if vim.api.nvim_buf_get_name(0) == "" then return end   -- unnamed: :w would E32
+  if not vim.bo.modified then return end
+  vim.cmd("silent! update")     -- silent!: a read-only file must not interrupt you
+end
+
+vim.api.nvim_create_autocmd({ "TextChangedI", "TextChanged" }, {
+  callback = function()
+    autosave_gen = autosave_gen + 1
+    local mine = autosave_gen
+    vim.defer_fn(function()
+      if mine == autosave_gen then autosave_now() end   -- still the newest? write.
+    end, AUTOSAVE_MS)
+  end,
+})
+
+-- ...and immediately on the way out of anything, where waiting for the debounce
+-- would mean losing the last few characters you typed.
+vim.api.nvim_create_autocmd({ "InsertLeave", "BufLeave", "FocusLost", "VimLeavePre" }, {
+  callback = autosave_now,
+})
+
 -- From here on "x" means visual ONLY and "s" means select ONLY -- plain "v"
 -- would be both, and Select mode needs its own version of nearly everything:
 -- there an unmapped RHS gets typed INTO the selection, so a bare `"+y` would

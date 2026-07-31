@@ -56,6 +56,7 @@ class Nvim:
     """The real editor, on a real pty."""
 
     def __init__(self, path):
+        self.path = path
         try:
             os.unlink(SOCK)
         except OSError:
@@ -142,13 +143,27 @@ class Nvim:
         self.send("\x1b", 0.20)
 
     def reset(self):
-        """Hard reset to the fixture on disk, then Normal mode at the top.
+        """Hard reset to the fixture, then Normal mode at the top.
 
         Cases must not depend on each other. `u` is not enough: a case that
         ends in SELECT mode can have its next keystroke swallowed as a
         replacement instead of a command, and one such slip silently rewrites
         the line the following case measures. :e! cannot be raced -- it is sent
-        over the socket, not typed."""
+        over the socket, not typed.
+
+        The file is REWRITTEN first, and that is not belt-and-braces: the
+        config autosaves, so by now the previous case's edits are on disk and
+        :e! would faithfully reload them. Reloading is only a reset if there is
+        something pristine to reload.
+
+        And the autosave has to be allowed to FINISH before the rewrite. It is
+        debounced ~700ms, so the previous case still has a write pending; if it
+        lands between the rewrite and the :e! it puts the stale buffer straight
+        back on disk and :e! dutifully reloads that. Symptom when this was not
+        waited out: a different, moving set of cases failed on each run."""
+        time.sleep(0.9)                        # outlast the autosave debounce
+        with open(self.path, "w") as fh:
+            fh.write(FIXTURE)
         subprocess.run(["nvim", "--server", SOCK, "--remote-send",
                         "<C-\\><C-n>:e!<CR>"], capture_output=True)
         time.sleep(0.6)

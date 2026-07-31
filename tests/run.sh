@@ -51,6 +51,7 @@ run "config invariants"             suite_options.sh
 run "config regressions"            suite_config.sh
 run "mouse: click to caret"         suite_mouse.sh
 run "find + search highlight"       suite_search.sh
+run "autosave"                      suite_autosave.sh
 
 # Ctrl+/ has no legacy control byte, so a terminal sends it EITHER as 0x1F
 # (<C-_>) or, with the kitty/CSI-u protocol negotiated, as ESC[47;5u (<C-/>).

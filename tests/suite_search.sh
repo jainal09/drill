@@ -70,6 +70,17 @@ t() {
   if [ -n "$FILTER" ] && [[ "$name" != *"$FILTER"* ]]; then return; fi
   # A fresh shada-less nvim per case: the / register persists otherwise and a
   # later case inherits the previous pattern.
+  # Rewrite the fixture per case: the config autosaves, so a case that types
+  # leaves its edit on disk and the next case would open the mutated file.
+  cat > "$FIX" <<'PY'
+def bfs(grid, start):
+    rows = len(grid)
+    q = deque([start])
+    seen = set()
+    while q:
+        node = q.popleft()
+    return len(seen)
+PY
   local out
   out="$(CASE="$name" KEYS="$keys" timeout 20 nvim --headless -i NONE -u "$CONFIG" \
           "$FIX" -c "luafile $WORK/probe.lua" -c 'qa!' 2>&1 |
