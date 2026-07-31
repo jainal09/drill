@@ -1,0 +1,30 @@
+tests/NOTES.md
+  s_cad2a66ae164f0::t_3d273145d1a603 108-135
+nvimrc.lua
+  s_cad2a66ae164f0::t_2066e2084134c8 170,172-180,182
+  s_cad2a66ae164f0::t_3967625604f687 160-169,171,181,183-184
+tests/suite_search.sh
+  s_cad2a66ae164f0::t_a3074f5d608a42 41-46,48,53-61,67,77-78,80-81,89-90,113
+  s_cad2a66ae164f0::t_46fe8a316ac063 1-40,47,49,62-66,68-75,79,82-88,91-112,114-123
+  s_cad2a66ae164f0::t_bb7e1775184001 50-52,76
+tests/run.sh
+  s_cad2a66ae164f0::t_3d273145d1a603 53
+KEYS.md
+  s_cad2a66ae164f0::t_b913a42dbeed3d 16,86-91
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.18",
+  "base_commit_sha": "c43b9bf533ae8cbdecce281d73c2005b5d390093",
+  "prompts": {},
+  "sessions": {
+    "s_cad2a66ae164f0": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "47beb2da-2237-4421-a73d-2b4261724c73",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jainal Gosaliya <jainal09gosalia@gmail.com>"
+    }
+  }
+}
