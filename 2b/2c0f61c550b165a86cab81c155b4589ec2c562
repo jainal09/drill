@@ -1,0 +1,35 @@
+tests/NOTES.md
+  s_cad2a66ae164f0::t_8269716f879064 135-159
+tests/mouse_drive.py
+  s_cad2a66ae164f0::t_aaaa49261a3433 157-164
+  s_cad2a66ae164f0::t_518f33ff7a5e00 59,146,152-156,165-166
+KEYS.md
+  s_cad2a66ae164f0::t_f28209dc3108f8 10,86-101,164
+tests/suite_search.sh
+  s_cad2a66ae164f0::t_518f33ff7a5e00 73-83
+tests/suite_autosave.sh
+  s_cad2a66ae164f0::t_ef5d20d0e92f7a 1-25,28-32,40-61,63-90,100-102,109-121
+  s_cad2a66ae164f0::t_3c0004aeb591e4 26-27,39
+  s_cad2a66ae164f0::t_8269716f879064 91-99
+  s_cad2a66ae164f0::t_44b7efab51442c 33-38,62,103-108
+tests/run.sh
+  s_cad2a66ae164f0::t_1158a642037dc5 54
+nvimrc.lua
+  s_cad2a66ae164f0::t_3cf3955f128815 104-154
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.18",
+  "base_commit_sha": "2b2c0f61c550b165a86cab81c155b4589ec2c562",
+  "prompts": {},
+  "sessions": {
+    "s_cad2a66ae164f0": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "47beb2da-2237-4421-a73d-2b4261724c73",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jainal Gosaliya <jainal09gosalia@gmail.com>"
+    }
+  }
+}
