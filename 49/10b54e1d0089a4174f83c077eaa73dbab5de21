@@ -1,0 +1,28 @@
+drill.sh
+  s_cad2a66ae164f0::t_c0b8fee9679cd0 92-143,145,153,155-174,176-177
+  s_cad2a66ae164f0::t_1d03e4c1ddd22f 146-152
+KEYS.md
+  s_cad2a66ae164f0::t_400fddbeaafdf4 174-179,190-191
+tests/run.sh
+  s_cad2a66ae164f0::t_400fddbeaafdf4 15-16,56
+README.md
+  s_cad2a66ae164f0::t_400fddbeaafdf4 91
+tests/suite_timer.sh
+  s_cad2a66ae164f0::t_6d1c4d8a7082ab 1-167
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.18",
+  "base_commit_sha": "4910b54e1d0089a4174f83c077eaa73dbab5de21",
+  "prompts": {},
+  "sessions": {
+    "s_cad2a66ae164f0": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "47beb2da-2237-4421-a73d-2b4261724c73",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jainal Gosaliya <jainal09gosalia@gmail.com>"
+    }
+  }
+}
