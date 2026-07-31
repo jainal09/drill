@@ -13,7 +13,7 @@ Syntax highlighting only. No completion, no LSP, no snippets, no AI.
 | `Ctrl+X` | cut to system clipboard | selection |
 | `Ctrl+V` | paste (replaces the selection if there is one) | normal, insert, selection, command |
 | `Ctrl+A` | select all | normal, insert |
-| `Ctrl+F` | find (opens `/`) | normal, insert |
+| `Ctrl+F` | find (opens `/`); the highlight clears when you type again | normal, insert |
 | `Ctrl+/` | comment / uncomment the line or the selected lines | normal, insert, visual, selection |
 | `Ctrl+Z` | undo | normal, insert, visual |
 | `Ctrl+Y` | redo | normal, insert, visual |
@@ -82,6 +82,12 @@ instead of a letter. Option is now ignored for the left button: click, drag and
 release all behave as if you had not held it. `Ctrl+Q` is still how you ask for
 a block on purpose. Shift+click still extends a selection, as it does anywhere
 else.
+
+**Find** (`Ctrl+F`) lights up every match and drops you on the first one, in
+Normal mode, so `n` and `N` walk the matches with the highlight still on. The
+moment you go back to typing, the highlight clears — `hlsearch` is on by nvim
+default and nothing here used to turn it off, so matches stayed lit through the
+edit, the next one, and the one after, until you happened to run another search.
 
 `Ctrl+A` selects the file in **Select** mode, so the next thing you type —
 a letter, `Delete`, `Backspace` — replaces the lot and leaves you typing.

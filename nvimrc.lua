@@ -157,6 +157,31 @@ map("i", "<C-a>", "<C-o>gg<C-o>gH<C-o>G", S)
 map("n", "<C-f>", "/", L)              -- find
 map("i", "<C-f>", "<Esc>/", L)
 
+-- ...and the highlight goes away the moment you start typing again.
+-- 'hlsearch' is ON by default in nvim and this config never set it, so every
+-- match stayed lit -- through the edit, and the next one, and the one after --
+-- until you happened to run another search. Every other editor drops the
+-- highlight as soon as you get back to work, and here there is nothing to turn
+-- it off with: :nohlsearch is a command, and reaching the command line means
+-- leaving the insert mode you are supposed to live in.
+--
+-- InsertEnter is the honest moment: while you are still in Normal after the
+-- search the matches stay lit, so <C-f> is usable and n / N still walk them
+-- with the highlight on. Go back to typing and it clears.
+--
+-- CONFLICT 8: it has to be DEFERRED, and both spellings need it. Clearing the
+-- highlight from inside the autocmd itself does nothing at all -- an autocmd
+-- runs inside a save/restore of the search state, so the assignment is put back
+-- on the way out. Measured, with the naive version installed:
+--     [InsertEnter] set v:hlsearch = 0 -> reads back 0
+--     [InsertLeave] v:hlsearch = 1          <- restored behind your back
+-- vim.schedule lands the write after that context has unwound, where it sticks.
+-- (:nohlsearch has exactly the same problem and exactly the same fix; neither
+-- spelling is the "working" one on its own.)
+vim.api.nvim_create_autocmd("InsertEnter", {
+  callback = function() vim.schedule(function() vim.v.hlsearch = 0 end) end,
+})
+
 -- ---------------------------------------------------------------------------
 -- toggle comment on line(s)  --  Ctrl+/
 --

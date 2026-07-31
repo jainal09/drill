@@ -105,7 +105,34 @@ Two traps in there, both paid for:
 * read cursor/line state with `.rstrip('\n')`, **not** `.strip()` — the latter
   eats the leading indentation that half these cases exist to assert.
 
-### 9. Bad probe keys to avoid
+### 9. Clearing the search highlight from an autocmd silently does nothing
+
+An autocmd body runs inside a save/restore of the search state, so a write to
+`v:hlsearch` (or a `:nohlsearch`) is put back on the way out. Measured with the
+naive version installed:
+
+```
+[InsertEnter] set v:hlsearch = 0 -> reads back 0
+[InsertLeave] v:hlsearch = 1          <- restored behind your back
+```
+
+Both spellings have the problem and both are fixed the same way: do it inside
+`vim.schedule`, which lands after that context has unwound. Note the failure
+mode for tests — reading `v:hlsearch` from *inside* the callback reports the
+success that never happened, so `suite_search.sh` always reads it from outside,
+after the keys have settled.
+
+Two further traps that suite is built around:
+
+* Do NOT prepend a leading `i` the way `run_test.sh` does. That fires
+  `InsertEnter`, whose deferred clear then lands *after* the search and wipes a
+  highlight the user would really still be seeing — a pure artifact of feeding
+  every key in one burst. Each case starts in Normal and spells out its keys.
+* Assert what is VISIBLY lit, not `v:hlsearch` alone. nvim leaves the flag at 1
+  after a search you opened and cancelled without ever searching, but the `/`
+  register is empty then, so nothing is drawn. The honest measure is the pair.
+
+### 10. Bad probe keys to avoid
 
 `ZZ` in Normal mode is write-and-quit — an early probe silently exited nvim
 before it could log anything. `Q` raises `E354`.
