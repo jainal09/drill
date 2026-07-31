@@ -88,6 +88,7 @@ deliberate — the point is fluency in *typing code*, not fluency in vim.
 | `r <file>` | `python3 <file>` |
 | `ri <file>` | `python3 -i <file>` — REPL with the file's names already live |
 | `t` / `t10` | 25- / 10-minute timer, non-blocking, alerts at zero |
+| `t -k` / `t -l` | stop it (by id if you like) / is one running |
 
 `r` and `ri` take a bare name and find it under `scratch/`, `solves/` or
 `templates/`, so `ri day1` works from anywhere.

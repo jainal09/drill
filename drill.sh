@@ -89,11 +89,89 @@ for _ in range(3):
 PY
 )
 
-_drill_timer() {
-  pkill -f "drill-timer" 2>/dev/null        # only ever one running
-  python3 -c "$_DRILL_TIMER_PY" "$1" drill-timer &
-  disown 2>/dev/null
-  echo "timer: $1 min (counts down in the window title; sound + notification at zero)"
+# The tag is the last argument handed to the python process, which is the only
+# thing that makes one findable in `ps` later. Overridable so the test suite can
+# run a timer of its own without going anywhere near yours.
+: "${DRILL_TIMER_TAG:=drill-timer}"
+
+# Killing a timer leaves the last countdown frozen in the window title -- the
+# timer repaints it twice a second, and once it is gone nothing else does.
+_drill_timer_clear_title() { printf '\033]0;\007'; }
+
+# Every running timer, one PID per line. Written as a here-doc loop rather than
+# `for p in $pids` on purpose: zsh does not word-split unquoted expansions the
+# way bash does, so that form iterates ONCE with the whole newline-joined blob
+# in zsh and per-PID in bash. This behaves the same in both.
+_drill_timer_pids() { pgrep -f "$DRILL_TIMER_TAG" 2>/dev/null; }
+
+_drill_timer_stop() {
+  local want="$1" pids p found="" killed=0
+  pids="$(_drill_timer_pids)"
+  if [ -z "$pids" ]; then
+    echo "timer: none running"
+    return 1
+  fi
+
+  if [ -n "$want" ]; then
+    # NEVER kill a bare id on trust. A finished timer's pid is returned to the
+    # OS and handed out again, so `t -k 70147` typed from scrollback ten minutes
+    # later could land on something else entirely. Only ids that are a drill
+    # timer *right now* are eligible.
+    while IFS= read -r p; do
+      [ -n "$p" ] && [ "$p" = "$want" ] && found="$p"
+    done <<EOF
+$pids
+EOF
+    if [ -z "$found" ]; then
+      printf 'timer: %s is not a running drill timer (running: %s)\n' \
+        "$want" "$(printf '%s' "$pids" | tr '\n' ' ')" >&2
+      return 1
+    fi
+    kill "$found" 2>/dev/null && killed=1
+  else
+    while IFS= read -r p; do
+      [ -n "$p" ] && kill "$p" 2>/dev/null && killed=$((killed + 1))
+    done <<EOF
+$pids
+EOF
+  fi
+
+  _drill_timer_clear_title
+  [ "$killed" -gt 0 ] && echo "timer: stopped" || { echo "timer: nothing to stop"; return 1; }
+  return 0
 }
-t()   { _drill_timer 25; }
-t10() { _drill_timer 10; }
+
+_drill_timer() {
+  _drill_timer_stop >/dev/null 2>&1          # only ever one running
+  # stdio goes to /dev/null, and that is not cosmetic: a background child keeps
+  # the inherited descriptors open, so any command substitution around this --
+  # `id=$(t)`, or a test capturing the output -- would block for the full 25
+  # minutes waiting for the pipe to close. The countdown, the bell and the
+  # TIME UP line are all written to /dev/tty by the script itself, so nothing
+  # is lost by detaching these.
+  python3 -c "$_DRILL_TIMER_PY" "$1" "$DRILL_TIMER_TAG" >/dev/null 2>&1 &
+  local id=$!
+  disown 2>/dev/null
+  echo "timer: $1 min, id $id (counts down in the window title; sound at zero)"
+  echo "       stop it with:  t -k $id      (or just  t -k)"
+}
+
+# t / t10 take the same flags, so whichever one you started with, the muscle
+# memory for stopping it is the same.
+_drill_timer_cmd() {
+  local mins="$1"; shift
+  case "${1:-}" in
+    "")             _drill_timer "$mins" ;;
+    -k|--kill|stop) shift; _drill_timer_stop "${1:-}" ;;
+    -l|--list)      local p; p="$(_drill_timer_pids)"
+                    [ -n "$p" ] && printf 'timer: running, id %s\n' \
+                      "$(printf '%s' "$p" | tr '\n' ' ')" || echo "timer: none running" ;;
+    -h|--help)      echo "usage: t | t10        start a 25- / 10-minute timer"
+                    echo "       t -k [id]      stop it (id optional -- there is only one)"
+                    echo "       t -l           is one running?" ;;
+    *)              echo "timer: unknown option '$1' (try: t -k [id], t -l, t -h)" >&2
+                    return 2 ;;
+  esac
+}
+t()   { _drill_timer_cmd 25 "$@"; }
+t10() { _drill_timer_cmd 10 "$@"; }

@@ -12,7 +12,8 @@
 #
 #  Exit code is 0 only if every case passes. Run it before you push.
 #
-#  Requires: nvim 0.9+, perl (for the `timeout` shim -- macOS ships no
+#  Requires: nvim 0.9+, zsh (the timer suite runs drill.sh under bash AND
+#  zsh -- they disagree about word splitting), perl (for the `timeout` shim -- macOS ships no
 #  GNU coreutils), python3 (the mouse suite needs a pty; headless nvim has no
 #  screen grid to click on). See NOTES.md for why the harness is shaped the
 #  way it is.
@@ -52,6 +53,7 @@ run "config regressions"            suite_config.sh
 run "mouse: click to caret"         suite_mouse.sh
 run "find + search highlight"       suite_search.sh
 run "autosave"                      suite_autosave.sh
+run "shell: timer"                  suite_timer.sh
 
 # Ctrl+/ has no legacy control byte, so a terminal sends it EITHER as 0x1F
 # (<C-_>) or, with the kitty/CSI-u protocol negotiated, as ESC[47;5u (<C-/>).

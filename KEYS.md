@@ -171,7 +171,12 @@ goes to python.
 
 `Ctrl+Z` is undo here, so the old panic-suspend out of nvim is gone by design.
 
-To kill a running timer: `pkill -f drill-timer`.
+To stop a running timer: **`t -k`**. Starting one prints its id, so `t -k <id>`
+works too — and an id that is not a live drill timer is refused rather than
+killed, because a finished timer's pid gets recycled onto something else and
+`t -k` off old scrollback would otherwise fire at a stranger. `t -l` says
+whether one is running. Stopping also clears the countdown out of the window
+title, which `pkill` on its own does not.
 
 ## Shell
 
@@ -182,6 +187,8 @@ ds <name>   edit ~/drill/solves/<name>.py       bare = dir listing
 r <file>    python3 <file>
 ri <file>   python3 -i <file>   (REPL with the file's names live)
 t / t10     25- / 10-minute timer, counts down in the window title
+t -k [id]   stop it (id optional -- there is only ever one)
+t -l        is one running?
 ```
 
 ## Conflicts, and how each is resolved
