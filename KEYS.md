@@ -24,11 +24,64 @@ Syntax highlighting only. No completion, no LSP, no snippets, no AI.
 | **Shift+arrows** | **select, like any other editor** | normal, insert |
 | `Delete` / `Backspace` | delete the selection and keep typing | selection |
 | Arrows | movement | everywhere |
-| Mouse | select + scroll | everywhere |
+| **Click** | **put the caret there and keep typing** | everywhere |
+| Mouse drag | select | everywhere |
+| Mouse wheel | scroll | everywhere |
 
 Shift+arrows, Shift+Home/End and mouse drags all start a selection. Typing over
 one replaces it and leaves you in insert, and none of it overwrites your
 clipboard with the text it just replaced.
+
+A left click puts the caret exactly where you clicked and leaves you **typing**
+there — including from Normal mode, which is one `Ctrl+C` away at all times.
+
+**Anywhere means anywhere**, not just where there is already text. `mouse=a`
+alone only lets the caret sit on a real character, so a click on a blank line
+snaps to column 1 and a click to the right of a short line snaps to its end —
+and a half-written drill file is mostly blank lines and 20-character lines, so
+nearly every click lands nowhere near the pointer and the mouse reads as
+broken. `virtualedit=all` is what fixes that: click into empty space and the
+caret stays where you put it. Type there and the gap fills with spaces, so
+clicking out to an indent level on a blank line and writing does what you meant.
+
+**A click that wobbles is still a click.** Your finger drifts a few pixels
+between pressing and lifting, a character cell is about 8 pixels wide, and a
+mouse drag starts a selection — so nearly every real trackpad click used to
+drift across a cell boundary and strand you in Select mode holding a
+one-character selection you never asked for. The caret looked right, but the
+next letter you typed *replaced* a character instead of inserting one. Now a
+mouse selection ending within one cell of where the button went down — in
+**both** axes — is treated as the click it was, and the caret goes to the cell
+you **pressed** on, not the one you drifted to.
+
+Both axes, because drifting down a *row* was the worse half: the selection then
+ran from the press column on one line to the same column on the next, so one
+click plus one keystroke merged two lines into one. A click that looked like it
+did nothing destroyed a line and a half.
+
+Dragging still selects — two cells or more, or two rows or more, is a real drag
+— and double-click still takes the word. The one thing you cannot do any more
+is drag-select exactly one character; use shift+arrows or double-click for that.
+
+**Ctrl+click is also just a click.** vim maps it to `CTRL-]`, a tag jump; with
+no tags file that raises `E426` and then wedges the editor behind a modal
+*"Press ENTER or type command to continue"* prompt — one stray Ctrl and the
+mouse looks like it hung the editor. Shift+click is left alone and still
+extends a selection, as it does everywhere else.
+
+*The one cost of `virtualedit=all`:* at the end of a line the right arrow now
+walks into the empty space past it instead of stopping. Delete the
+`vim.opt.virtualedit` line to get the old behaviour back, at the price of the
+click snapping again.
+
+**Option+click is the same click.** macOS habit — it is how iTerm2 moves the
+cursor at a shell prompt — but vim gives `ALT-LeftMouse` a different job, a
+*blockwise* selection, so it used to put the caret in the right place and then
+leave you stuck in a one-cell block where the next key was a block operator
+instead of a letter. Option is now ignored for the left button: click, drag and
+release all behave as if you had not held it. `Ctrl+Q` is still how you ask for
+a block on purpose. Shift+click still extends a selection, as it does anywhere
+else.
 
 `Ctrl+A` selects the file in **Select** mode, so the next thing you type —
 a letter, `Delete`, `Backspace` — replaces the lot and leaves you typing.
@@ -201,9 +254,23 @@ overwrites the system clipboard. To delete without touching it, use the
 black-hole register: `"_dd`, `"_x`. `Delete`, `Backspace` and typing over a
 selection are already black-holed.
 
-**Mouse:** `mouse=a` means dragging selects in vim, not in the terminal. To use
-your terminal's own selection, hold **Option** (macOS) or **Shift** (Linux)
-while dragging.
+**Mouse:** `mouse=a` means clicking and dragging go to vim, not to the terminal.
+To use your terminal's own selection, hold **Option** (macOS) or **Shift**
+(Linux) while dragging.
+
+**In the directory listing** (bare `d` / `dt` / `ds`) the mouse belongs to netrw,
+not to this config: netrw installs its own click handler, so clicking a name
+*opens* it rather than moving a caret. That is netrw's behaviour and it is left
+alone — a listing is not a file you type in.
+
+If clicks do nothing at all, run **`~/drill/tests/mousecheck.sh`** in the window
+you drill in. It turns mouse reporting on by hand and prints the raw bytes your
+terminal sends, which says immediately whether the click ever left the terminal
+(nothing arrives → inside **tmux** you need `set -g mouse on`, and a few
+terminals have reporting off by default) or arrived carrying a modifier you did
+not mean to press. An SGR click reads `^[[<0;COL;ROWM`; the number before the
+first `;` is the button plus its modifiers, where **4 is Shift, 8 is Option and
+16 is Ctrl** — so `^[[<8;…` is an Option+click, not a plain one.
 
 ## One trade-off
 

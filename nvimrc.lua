@@ -20,7 +20,16 @@ vim.opt.swapfile = false
 vim.opt.backup = false
 vim.opt.writebackup = false
 vim.opt.undofile = false
-vim.opt.mouse = "a"                    -- select + scroll
+vim.opt.mouse = "a"                    -- click + select + scroll
+-- Click ANYWHERE, including where there is no text. Without this the caret can
+-- only go where a character already is, so a click on a blank line snaps to
+-- column 1 and a click to the right of a short line snaps to its end -- in a
+-- half-written drill file, which is mostly blank lines and 20-character lines,
+-- almost every click lands nowhere near the pointer and the mouse reads as
+-- broken. Measured on a real scratch file: 9 of its 22 lines were empty.
+-- Typing in that empty space pads with spaces, so clicking out to an indent
+-- level on a blank line and writing there does the obvious thing.
+vim.opt.virtualedit = "all"
 vim.opt.clipboard = "unnamedplus"      -- system clipboard (macOS: pbcopy/pbpaste)
 
 -- One cursor everywhere you type. Nvim's default is a vertical bar in insert
@@ -417,6 +426,150 @@ for i = 32, 126 do
   map("s", k, '<C-g>"_c' .. k, S)
 end
 
+-- ---------------------------------------------------------------------------
+-- Click anywhere and carry on typing  --  <LeftRelease>
+--
+-- 'mouse=a' already moves the caret to the click, and from INSERT mode that is
+-- the whole story: click, keep typing. From NORMAL mode it is half the story --
+-- the caret lands where you clicked but you are still in Normal, so the next
+-- letter runs as a command. Measured: click a line, type "x", and it DELETED a
+-- character instead of typing one. Normal mode is one <C-c> away at all times
+-- (<C-c> is Esc in insert), so this is reachable by accident, not just by
+-- someone who asked for vim.
+--
+-- <LeftRelease>, not <LeftMouse>. Two reasons, and the second is the important
+-- one:
+--   * the PRESS is what moves the caret. Mapping it would mean re-implementing
+--     the move; mapping the release lets the built-in do it and just adds the
+--     mode change afterwards.
+--   * a mouse DRAG has already switched to Select mode (selectmode=mouse) by
+--     the time the button comes up, so drag-select keeps working untouched.
+--
+-- Bound in "n" and in "x"/"s" (see the jitter note below), never in:
+--   i    already lands you typing at the click; there is nothing to add.
+--   t    the interpreter. Arriving there is already handled by the WinEnter
+--        rule below, and a click INSIDE it is you reading scrollback -- being
+--        yanked back to the prompt is the opposite of what you asked for.
+-- ---------------------------------------------------------------------------
+
+-- a buffer you can actually type in. netrw is the `d`-with-no-argument
+-- directory listing: buftype is empty there too, but every letter is a command.
+local function typing_buffer()
+  return vim.bo.buftype == "" and vim.bo.modifiable and vim.bo.filetype ~= "netrw"
+end
+
+local function click_and_type()
+  if not typing_buffer() then return end
+  -- Plain :startinsert, and deliberately NOT :startinsert! -- with
+  -- virtualedit=all the press has already put the caret at the exact column
+  -- you clicked, empty space included, and `!` is `A`, which would yank it
+  -- back to the end of the line and throw that away. There is nothing left to
+  -- correct here: the only job is to leave you typing.
+  vim.cmd("startinsert")
+end
+map("n", "<LeftRelease>", click_and_type, S)
+
+-- ---------------------------------------------------------------------------
+-- A click that JITTERED. This is the one that actually breaks the mouse.
+--
+-- A finger on a trackpad never holds still. Press, and the pointer drifts a few
+-- pixels before the button comes up, so the terminal reports a MOTION event
+-- (SGR button+32) in between. A character cell is about 8px wide, so drifting
+-- across one cell boundary is the common case, not the rare one -- and
+-- selectmode=mouse turns any motion-with-button-down into a SELECTION. Measured
+-- under the real config:
+--
+--     press, release, nothing between        -> mode i, typing        (fine)
+--     press, motion in the SAME cell, release-> mode i, typing        (fine)
+--     press, motion ONE cell over, release   -> mode s, SELECT        (broken)
+--     press, motion out and back, release    -> mode s, SELECT        (broken)
+--
+-- So the caret is in the right place but you are stranded in Select mode
+-- holding a one-character selection you never asked for, the Normal-mode
+-- mapping above cannot fire, and the next letter you type REPLACES a character
+-- instead of inserting one. Every synthetic test passed because a script clicks
+-- perfectly still; a hand never does.
+--
+-- The rule: if the pointer ended up within ONE CELL of where it went down --
+-- in BOTH axes -- it was a click, not a drag. Collapse it and carry on typing.
+-- Nobody drag-selects a single character with a mouse; that is what
+-- shift+arrows and double-click are for, and both still work. A deliberate drag
+-- (two cells or more, or two rows or more) is left completely alone.
+--
+-- BOTH axes, and the row half is not hypothetical. A pointer resting near a row
+-- boundary drifts DOWN a row just as easily as it drifts sideways, and that
+-- case is far worse than the sideways one: the selection then runs from the
+-- press column on one line to the same column on the next, so it covers the
+-- whole tail of one line and the head of the next. Measured -- one jittered
+-- click plus one keystroke turned "        total += i" and "    return total"
+-- into the single line "        toZ total". A click the user believed did
+-- nothing but move the caret destroyed a line and a half.
+--
+-- The caret goes to the PRESS cell, not the release cell: the press is where
+-- you aimed, the drift is the accident. cursor() takes a third argument for the
+-- virtualedit offset, which is what carries a click in empty space across
+-- intact -- nvim_win_set_cursor cannot express one.
+-- ---------------------------------------------------------------------------
+local function release_collapse()
+  if not typing_buffer() then return end
+  local a, c = vim.fn.getpos("v"), vim.fn.getpos(".")   -- {buf, line, col, off}
+  if math.abs(c[2] - a[2]) > 1 then return end          -- >1 row: a real drag
+  local av, cv = a[3] + (a[4] or 0), c[3] + (c[4] or 0)
+  if math.abs(cv - av) > 1 then return end              -- >1 cell across: a real drag
+  -- Leaving Select/Visual is the one thing here that has to be a real mode
+  -- change -- there is no buffer-API way out of it -- so <Esc> is fed and the
+  -- caret is put back afterwards, on the next tick, once the mode has settled.
+  vim.api.nvim_feedkeys(vim.api.nvim_replace_termcodes("<Esc>", true, false, true),
+                        "n", false)
+  vim.schedule(function()
+    if not typing_buffer() then return end
+    pcall(vim.fn.cursor, a[2], a[3], a[4] or 0)
+    vim.cmd("startinsert")
+  end)
+end
+map({ "x", "s" }, "<LeftRelease>", release_collapse, S)
+
+-- ...and the same click with OPTION held. This is not a nicety: on macOS,
+-- Option+click is how iTerm2 itself moves the cursor at a shell prompt, so it
+-- is reflex, and holding Option is also the advice for grabbing the terminal's
+-- own selection. Vim gives ALT-LeftMouse a different job -- it starts a
+-- BLOCKWISE selection (:help mouse-using) -- so an Option+click put the caret
+-- in the right place and then left you sitting in a one-cell block, where the
+-- next key is a block operator instead of a letter. It looks like the click
+-- did nothing.
+--
+-- Captured off iTerm2 with tests/mousecheck.sh: the press arrives as
+-- ESC[<8;col;row M -- button 0 with the Alt bit (8) set in the SGR modifier
+-- field, Shift being 4 and Ctrl 16 -- and nvim spells that <M-LeftMouse>.
+--
+-- CTRL is dropped for the same reason, and its failure is the loudest of the
+-- lot: nvim maps <C-LeftMouse> to CTRL-] , a tag jump (:help mouse-using). This
+-- editor has no tags file and never will -- no LSP, no plugins -- so a Ctrl+click
+-- raises "E426: Tag not found" and then WEDGES the editor behind a modal
+-- "Press ENTER or type command to continue" prompt. One stray Ctrl and the
+-- mouse appears to have hung the whole thing.
+--
+-- So Option and Ctrl are simply dropped for the left button: press, drag and
+-- release all do what the unmodified ones do. Nothing is lost -- <C-q> is still
+-- how you ask for a blockwise selection on purpose, and the tag jump was never
+-- reachable here anyway. SHIFT (4) is deliberately left alone: shift+click
+-- extending a selection is what every other editor does too.
+for _, m in ipairs({ "n", "i", "x", "s" }) do
+  for _, mod in ipairs({ "M", "C" }) do
+    map(m, "<" .. mod .. "-LeftMouse>", "<LeftMouse>", S)
+    map(m, "<" .. mod .. "-LeftDrag>",  "<LeftDrag>",  S)
+  end
+end
+-- The release goes to the SAME handlers as an unmodified one, not to a
+-- non-remapped "<LeftRelease>" -- that would reach nvim's built-in and skip the
+-- jitter collapse, so an Option+click that drifted would still strand you in
+-- Select mode.
+for _, mod in ipairs({ "M", "C" }) do
+  map("i", "<" .. mod .. "-LeftRelease>", "<LeftRelease>", S)
+  map("n", "<" .. mod .. "-LeftRelease>", click_and_type, S)   -- a plain click
+  map({ "x", "s" }, "<" .. mod .. "-LeftRelease>", release_collapse, S)
+end
+
 -- run / interpreter. <C-e> is the whole interface: it shows the interpreter and
 -- it hides it, from any mode, and you are always typing wherever you land.
 local RUN_H = 15
@@ -436,9 +589,8 @@ local function type_here()
       -- FINISHED process is a trap: the next key just closes the window.
       local id = vim.b.terminal_job_id
       if id and vim.fn.jobwait({ id }, 0)[1] == -1 then vim.cmd("startinsert") end
-    elseif vim.bo.buftype == "" and vim.bo.modifiable
-       and vim.bo.filetype ~= "netrw" then            -- `d` with no arg: a listing,
-      vim.cmd("startinsert")                          -- where every letter is a command
+    elseif typing_buffer() then
+      vim.cmd("startinsert")
     end
   end)
 end

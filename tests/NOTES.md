@@ -80,7 +80,32 @@ No coreutils. `bin/timeout` is a 3-line perl `alarm` shim; `run_test.sh` puts
 it on `PATH` so the mandated `timeout 20 nvim --headless … -c 'qa!'` shape
 works verbatim.
 
-### 8. Bad probe keys to avoid
+### 8. The mouse cannot be tested this way at all
+
+`--headless` attaches no UI, so there is no screen grid, and clicks have
+nowhere to land. Measured: `nvim_input_mouse('left','press','',0,2,5)` returns
+`true` and changes nothing — cursor stayed `(1,0)` across every click.
+
+Attaching a UI from a second nvim over RPC does not work either: the embedded
+child exits 1 as soon as `nvim_ui_attach` succeeds and the first `redraw`
+notification goes out, with or without the drill config.
+
+What does work is a real pty (`os.forkpty`) plus the real SGR escape sequences
+a terminal sends — `ESC [ < btn ; col ; row M` press, `... m` release, `btn+32`
+drag — decoded by nvim's own terminal input parser, exactly as under iTerm2.
+State is read back over `--listen` + `--remote-expr` rather than by scraping
+the screen. That is `mouse_drive.py` / `suite_mouse.sh`.
+
+Two traps in there, both paid for:
+
+* `'mousetime'` is 500 ms. The driver's `click()` deliberately waits longer
+  than that between press and release, so two `click()` calls are two SINGLE
+  clicks, never a double. `double_click()` writes all four sequences in one
+  `write()`.
+* read cursor/line state with `.rstrip('\n')`, **not** `.strip()` — the latter
+  eats the leading indentation that half these cases exist to assert.
+
+### 9. Bad probe keys to avoid
 
 `ZZ` in Normal mode is write-and-quit — an early probe silently exited nvim
 before it could log anything. `Q` raises `E354`.

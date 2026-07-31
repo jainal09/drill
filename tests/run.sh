@@ -13,7 +13,9 @@
 #  Exit code is 0 only if every case passes. Run it before you push.
 #
 #  Requires: nvim 0.9+, perl (for the `timeout` shim -- macOS ships no
-#  GNU coreutils). See NOTES.md for why the harness is shaped the way it is.
+#  GNU coreutils), python3 (the mouse suite needs a pty; headless nvim has no
+#  screen grid to click on). See NOTES.md for why the harness is shaped the
+#  way it is.
 # ============================================================================
 set -uo pipefail
 DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -47,6 +49,7 @@ run() {                                  # run <label> <script> [env assignments
 
 run "config invariants"             suite_options.sh
 run "config regressions"            suite_config.sh
+run "mouse: click to caret"         suite_mouse.sh
 
 # Ctrl+/ has no legacy control byte, so a terminal sends it EITHER as 0x1F
 # (<C-_>) or, with the kitty/CSI-u protocol negotiated, as ESC[47;5u (<C-/>).

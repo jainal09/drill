@@ -51,7 +51,59 @@ ok("no_backup", vim.o.backup == false, vim.o.backup)
 ok("no_writebackup", vim.o.writebackup == false, vim.o.writebackup)
 ok("no_undofile", vim.o.undofile == false, vim.o.undofile)
 
+-- ---- click to caret ------------------------------------------------------
+-- the mouse has to reach nvim at all before any of suite_mouse.sh can pass
+ok("mouse_all_modes", vim.o.mouse == "a", vim.o.mouse)
+-- Bound in NORMAL (a still click leaves Normal mode typing) and in
+-- VISUAL/SELECT (a click that jittered across a cell boundary becomes a
+-- one-character selection; that has to collapse back to a caret, or a trackpad
+-- click strands you in Select mode and the next letter replaces a character).
+-- NOT in insert -- a click there already leaves you typing -- and NOT in
+-- terminal, where a click is you reading python scrollback.
+for _, m in ipairs({"n", "x", "s"}) do
+  ok("click_bound_in_" .. m, vim.fn.maparg("<LeftRelease>", m) ~= "",
+     vim.fn.maparg("<LeftRelease>", m))
+end
+for _, m in ipairs({"i", "t"}) do
+  ok("click_free_in_" .. m, vim.fn.maparg("<LeftRelease>", m) == "",
+     vim.fn.maparg("<LeftRelease>", m))
+end
+-- the DRAG must stay unmapped in visual/select: mapping it would break
+-- drag-select outright, since the collapse decision belongs at the release
+ok("leftdrag_unmapped_in_select", vim.fn.maparg("<LeftDrag>", "s") == "",
+   vim.fn.maparg("<LeftDrag>", "s"))
+-- the PRESS must stay unmapped: it is what actually moves the caret
+ok("leftmouse_press_unmapped", vim.fn.maparg("<LeftMouse>", "n") == "",
+   vim.fn.maparg("<LeftMouse>", "n"))
+-- Option+click. iTerm2 reports it as the Alt bit (8) in the SGR modifier field
+-- and vims built-in job for ALT-LeftMouse is a BLOCKWISE selection, so without
+-- these the click drops you in a one-cell block instead of putting the caret
+-- down. Option is dropped for the left button in every typing mode.
+-- Ctrl is stripped for a louder reason: nvim maps <C-LeftMouse> to CTRL-] , a
+-- tag jump, which with no tags file raises E426 and wedges the editor behind a
+-- modal "Press ENTER" prompt. Shift is deliberately NOT stripped -- shift+click
+-- extending a selection is standard everywhere.
+for _, mod in ipairs({"M", "C"}) do
+  for _, m in ipairs({"n", "i", "x", "s"}) do
+    ok(mod .. "click_press_mapped_" .. m,
+       vim.fn.maparg("<" .. mod .. "-LeftMouse>", m) == "<LeftMouse>",
+       vim.fn.maparg("<" .. mod .. "-LeftMouse>", m))
+    ok(mod .. "click_drag_mapped_" .. m,
+       vim.fn.maparg("<" .. mod .. "-LeftDrag>", m) == "<LeftDrag>",
+       vim.fn.maparg("<" .. mod .. "-LeftDrag>", m))
+    ok(mod .. "click_release_mapped_" .. m,
+       vim.fn.maparg("<" .. mod .. "-LeftRelease>", m) ~= "",
+       vim.fn.maparg("<" .. mod .. "-LeftRelease>", m))
+  end
+  -- ...and not in the interpreter, where the mouse belongs to python
+  ok(mod .. "click_free_in_terminal", vim.fn.maparg("<" .. mod .. "-LeftMouse>", "t") == "",
+     vim.fn.maparg("<" .. mod .. "-LeftMouse>", "t"))
+end
+ok("shiftclick_left_alone", vim.fn.maparg("<S-LeftMouse>", "n") == "",
+   vim.fn.maparg("<S-LeftMouse>", "n"))
+
 -- ---- the selection model shift+arrows depends on ------------------------
+ok("virtualedit_all", vim.o.virtualedit == "all", vim.o.virtualedit)
 ok("selection_exclusive", vim.o.selection == "exclusive", vim.o.selection)
 ok("selectmode_key_mouse", vim.o.selectmode == "key,mouse", vim.o.selectmode)
 ok("keymodel_startsel_stopsel", vim.o.keymodel == "startsel,stopsel", vim.o.keymodel)
