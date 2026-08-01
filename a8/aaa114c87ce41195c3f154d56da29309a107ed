@@ -1,0 +1,30 @@
+tests/suite_quit.sh
+  s_cad2a66ae164f0::t_7c19f8ef4b3b3a 1-56
+nvimrc.lua
+  s_cad2a66ae164f0::t_94ec029ae3859a 777-827
+tests/run.sh
+  s_cad2a66ae164f0::t_7ab1664d0cbbc6 56
+KEYS.md
+  s_cad2a66ae164f0::t_7ab1664d0cbbc6 24,161-173
+tests/quit_drive.py
+  s_cad2a66ae164f0::t_2ecac2b22bbafe 1-191
+tests/suite_options.sh
+  s_cad2a66ae164f0::t_7ab1664d0cbbc6 124-129,133
+  s_cad2a66ae164f0::t_e015559f63cd96 130-132
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.19",
+  "base_commit_sha": "a8aaa114c87ce41195c3f154d56da29309a107ed",
+  "prompts": {},
+  "sessions": {
+    "s_cad2a66ae164f0": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "47beb2da-2237-4421-a73d-2b4261724c73",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jainal Gosaliya <jainal09gosalia@gmail.com>"
+    }
+  }
+}
