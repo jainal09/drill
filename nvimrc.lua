@@ -774,3 +774,54 @@ for _, m in ipairs({
 }) do
   map(m[1], m[2], m[3], S)
 end
+
+-- ---------------------------------------------------------------------------
+-- Quit  --  Ctrl+Shift+Q
+--
+-- Getting out was the last thing that still needed a command line: Esc, then
+-- :qa!, typed in full, every time. In an editor whose whole premise is that you
+-- never leave insert, the exit should not be the one place you have to.
+--
+-- Ctrl+Shift+Q, and it only exists for the same reason <C-S-z> does: in the
+-- legacy encoding Shift is dropped from a control chord, so Ctrl+Q and
+-- Ctrl+Shift+Q are both 0x11 and cannot be told apart. With CSI-u negotiated
+-- they are separate keys -- measured, ESC[113;6u fires <C-S-q> while a bare
+-- 0x11 still fires <C-q> -- so this costs the visual-block binding nothing.
+-- Every other candidate was already spoken for: <C-q> IS visual block, <C-w> is
+-- the window prefix, and <C-c>/<C-d> are deliberately left to python.
+--
+-- Bound in "t" as well, so you can quit from inside the interpreter without
+-- pressing <C-e> to get out of it first. python has no use for <C-S-q>, and
+-- <C-c>/<C-d> are untouched, so nothing is taken away from it.
+--
+-- :wall then :qa! -- in that order and both needed. The autosave debounce means
+-- the last few characters you typed may still be pending, so write first; and
+-- the ! is what lets it quit while python is still live, which is the whole
+-- reason the old escape hatch was :qa! and not :wqa (:wqa REFUSES while a
+-- terminal job is running).
+-- ---------------------------------------------------------------------------
+local function repl_running()
+  if not (repl_buf and vim.api.nvim_buf_is_valid(repl_buf)) then return false end
+  local ok, id = pcall(function() return vim.b[repl_buf].terminal_job_id end)
+  if not ok or not id then return false end
+  return vim.fn.jobwait({ id }, 0)[1] == -1        -- -1 means still running
+end
+
+local function quit_drill()
+  -- The prompt says what you are about to kill. Quitting with a live REPL is
+  -- normal here -- <C-e> leaves python running on purpose -- so this is a
+  -- reminder, not a warning, and Quit is still one keystroke away.
+  local msg = repl_running()
+      and "Quit drill?  (python is still running -- it will be killed)"
+      or  "Quit drill?"
+  -- default 2 = Cancel: a mistyped chord must never be the one that quits.
+  local pick = vim.fn.confirm(msg, "&Quit\n&Cancel", 2, "Question")
+  if pick ~= 1 then
+    type_here()                                    -- cancelled: back to typing
+    return
+  end
+  vim.cmd("silent! wall")                          -- flush the pending autosave
+  vim.cmd("qa!")
+end
+
+map({ "n", "i", "t" }, "<C-S-q>", quit_drill, S)

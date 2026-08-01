@@ -121,6 +121,16 @@ for _, m in ipairs({"n", "v", "i"}) do
   ok("redo_ctrl_shift_z_bound_" .. m, vim.fn.maparg("<C-S-z>", m) ~= "", vim.fn.maparg("<C-S-z>", m))
   ok("undo_ctrl_z_bound_" .. m, vim.fn.maparg("<C-z>", m) ~= "", vim.fn.maparg("<C-z>", m))
 end
+-- quit. Bound in terminal too, so you can leave from inside the interpreter --
+-- python has no use for <C-S-q>. <C-q> must stay VISUAL BLOCK: the two are only
+-- separate keys because CSI-u keeps Shift on a control chord.
+for _, m in ipairs({"n", "i", "t"}) do
+  ok("quit_bound_" .. m, vim.fn.maparg("<C-S-q>", m) ~= "", vim.fn.maparg("<C-S-q>", m))
+end
+-- maparg normalises the rhs to "<C-V>", capital V -- compare case-insensitively
+ok("quit_did_not_steal_ctrl_q",
+   vim.fn.maparg("<C-q>", "n"):lower() == "<c-v>", vim.fn.maparg("<C-q>", "n"))
+
 -- Ctrl+C must stay unmapped in normal and terminal so SIGINT still lands
 ok("ctrlc_free_in_normal", vim.fn.maparg("<C-c>", "n") == "", vim.fn.maparg("<C-c>", "n"))
 ok("ctrlc_free_in_terminal", vim.fn.maparg("<C-c>", "t") == "", vim.fn.maparg("<C-c>", "t"))

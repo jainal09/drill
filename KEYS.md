@@ -21,6 +21,7 @@ Syntax highlighting only. No completion, no LSP, no snippets, no AI.
 | `Tab` | indent the selected lines | **selection only** |
 | `Shift+Tab` | unindent the selected lines | **selection only** |
 | `Ctrl+Q` | visual block (was `Ctrl+V`) | normal, visual |
+| `Ctrl+Shift+Q` | **quit, with a confirmation** | normal, insert, **and inside the REPL** |
 | **Shift+arrows** | **select, like any other editor** | normal, insert |
 | `Delete` / `Backspace` | delete the selection and keep typing | selection |
 | Arrows | movement | everywhere |
@@ -157,7 +158,19 @@ goes to python.
 
 ## Exiting
 
-**`Ctrl+S` then `:qa!`** — save, quit everything, no prompts. Use this one.
+**`Ctrl+Shift+Q`** — asks *"Quit drill?"*, then saves everything and goes. Use
+this one. `Q` quits, `C` or `Esc` cancels and puts you straight back where you
+were typing, and Cancel is the default so a mistyped chord can never be the one
+that quits. It works from inside the interpreter too, and says so when python is
+still running (it gets killed — that is what you want, and it is why the old
+escape hatch was `:qa!` rather than `:wqa`, which *refuses* while a terminal job
+is live).
+
+It exists for the same reason `Ctrl+Shift+Z` does: in the legacy encoding Shift
+is dropped from a control chord, so `Ctrl+Q` and `Ctrl+Shift+Q` are the same
+byte. With CSI-u they are different keys — which is what lets this coexist with
+`Ctrl+Q` for visual block. **On a terminal that speaks no CSI-u it will not
+fire**; `:qa!` still works there.
 
 | Command | Does |
 |---|---|
