@@ -1,0 +1,43 @@
+README.md
+  s_cad2a66ae164f0::t_a9de376e2994ea 50-51
+  s_cad2a66ae164f0::t_790dcec3be61b4 261-262
+  s_cad2a66ae164f0::t_751af94d82904e 112-113
+  s_cad2a66ae164f0::t_cc5b1b7c812f8e 335-339
+  s_cad2a66ae164f0::t_4ad639d499a836 381-383
+  s_cad2a66ae164f0::t_5c364158aa14d5 388-392
+  s_cad2a66ae164f0::t_fd362f4087b117 86-109,122-128
+  s_cad2a66ae164f0::t_b15e13e1b9a3b8 84-85
+  s_cad2a66ae164f0::t_11a6e072467c5c 11-14,41-42,76,137,139-142,147-160,168-170,175-260,263-266,269-270,272-283,286-288,291,295-305,313,325-334,340-343,345-348,371,373
+  s_cad2a66ae164f0::t_5c145cdc06dfcd 52
+  s_cad2a66ae164f0::t_ce2cff5f3f6648 171
+  s_cad2a66ae164f0::t_63adb2f456b659 47-49
+  s_cad2a66ae164f0::t_71f6e5ef9fa55e 114-116,119-121
+  s_cad2a66ae164f0::t_16f1ce846a5fd3 129
+  s_cad2a66ae164f0::t_515c37a9329ec0 271
+  s_cad2a66ae164f0::t_25fd3f09677e1c 384
+  s_524cae730fc652::t_6b6caabe0b93d9 45-46,117-118
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.19",
+  "base_commit_sha": "0215f08837084f59c39a1a31cdf62b23e31967a5",
+  "prompts": {},
+  "sessions": {
+    "s_524cae730fc652": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-areadme-writer-eec35fc356d30e58",
+        "model": "unknown"
+      },
+      "human_author": "Jainal Gosaliya <jainal09gosalia@gmail.com>"
+    },
+    "s_cad2a66ae164f0": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "47beb2da-2237-4421-a73d-2b4261724c73",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jainal Gosaliya <jainal09gosalia@gmail.com>"
+    }
+  }
+}
