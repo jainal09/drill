@@ -43,12 +43,12 @@ globally. **Your own `~/.config/nvim` and `~/.vimrc` are not touched.**
 - Stock Python 3 and Neovim. That's the whole dependency list.
 
 **One deliberate exception.** `filetype plugin indent on` is set, so Neovim's
-bundled Python indent plugin is live — type `def f():` and press Enter and the
-four spaces appear without you typing them. It is the one thing here that helps
-you type, and it stays because indentation is not the recall being drilled;
-`heapq.heappush(h, (dist, node))` is. Everything else on that list is absent,
-not merely off, and the test suite asserts it. (`indentexpr` reads
-`python#GetIndent` — that is the whole of it.)
+bundled Python indent plugin is live (`indentexpr` is `python#GetIndent`) — type
+`def f():` and press Enter and the four spaces appear without you typing them.
+It is the one thing here that helps you type, and it stays because indentation
+is not the recall being drilled; `heapq.heappush(h, (dist, node))` is.
+Everything else on that list is absent, not merely off, and the test suite
+asserts it.
 
 ## Install
 
@@ -111,16 +111,10 @@ deliberate — the point is fluency in *typing code*, not fluency in vim.
 
 `Ctrl+R` is the one-shot version: it saves, then runs a fresh `python3 <file>`
 in a split below — no prompt, and the same window is reused each time rather
-than stacking splits. You land *in* that output split; any key dismisses it and
-puts you back in the file, and the key is swallowed rather than typed. If the
-script calls `input()` you are already at its prompt and can just answer it.
-
-`Ctrl+E` is directional, not a toggle from both ends: from the file it takes you
-*to* the interpreter — focusing it if it is already open — and only from inside
-the interpreter does it hide it. To scroll back through output, `Ctrl+\`
-`Ctrl+N` first, or the wheel goes to python. You land *in* that split, and the next key you press
-dismisses it and is swallowed rather than typed. `Ctrl+R` then `Ctrl+E` leaves
-you with three windows.
+than stacking splits. You land *in* that output split: if the script is still
+running — waiting on `input()`, say — you are at its prompt and can answer it,
+and once it has exited any key dismisses the window, swallowed rather than
+typed. `Ctrl+R` then `Ctrl+E` leaves you with three windows.
 
 Out of the interpreter it is `Ctrl+E`, `Ctrl+\` `Ctrl+N`, or a click on the
 file. Nothing else is bound in terminal mode, on purpose: `Ctrl+C`, `Ctrl+D` and
@@ -221,8 +215,9 @@ keystroke — so it is debounced, and a burst of typing costs one write rather
 than one per character. Measured in a pty, staying in insert, 30 characters
 40ms apart: **2 writes, not 30.**
 
-Only real files. The interpreter split, the directory listing and any buffer
-with no filename are left alone.
+Only real files: the interpreter split, the directory listing and any buffer
+with no filename are left alone (`:w` with no name is `E32`, which would pop an
+error at you mid-keystroke).
 
 ### Find, and the highlight going away
 
@@ -385,10 +380,10 @@ same directory unless you pointed `DRILL_HOME` somewhere else.
 `templates/`, `cheatsheet.py` and `log.md` ship empty on purpose. Filling them
 in yourself is part of the exercise.
 
-Your practice work stays yours: `solves/`, `scratch/`, `templates/`,
-`cheatsheet.py` and `log.md` are all in `.gitignore`. Since the recommended
-install is a clone into `~/drill`, that is what keeps `git pull` clean after
-eighteen days of drilling, and what stops your solutions being committed.
+The recommended install *is* a clone into `~/drill`, so your practice work ends
+up sitting inside a git repo — `solves/`, `scratch/`, `templates/`,
+`cheatsheet.py` and `log.md` are all in `.gitignore` and will not be committed.
+That is also what keeps `git pull` clean after eighteen days of drilling.
 
 ## License
 
