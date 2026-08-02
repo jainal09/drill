@@ -1,0 +1,36 @@
+tests/runwin_drive.py
+  s_cad2a66ae164f0::t_9b5c6b4fd275b0 1-161
+tests/suite_runwin.sh
+  s_cad2a66ae164f0::t_440bc244c67787 1-54
+nvimrc.lua
+  s_cad2a66ae164f0::t_d2be1c8b08bf39 767-806
+  s_cad2a66ae164f0::t_e0da4ea0d521c1 97-113,116,149,691-700,702,704-706
+tests/suite_netrw.sh
+  s_cad2a66ae164f0::t_218f1981b5c401 5-9,11-14,25,27-29,31,33-38
+  s_cad2a66ae164f0::t_339f722d5cc601 1-4,10,15-24,26,30,32,39-57
+tests/netrw_drive.py
+  s_cad2a66ae164f0::t_5794230284960f 1-143
+KEYS.md
+  s_cad2a66ae164f0::t_dd331efe7371d0 148-153,171-184
+  s_cad2a66ae164f0::t_84ccb6eebba96f 185
+tests/run.sh
+  s_cad2a66ae164f0::t_dd331efe7371d0 57-58
+README.md
+  s_cad2a66ae164f0::t_2d558216227c90 117-124,293,305-306
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.20",
+  "base_commit_sha": "ffc1eb647d6e87eb6efb5129b78062da15274518",
+  "prompts": {},
+  "sessions": {
+    "s_cad2a66ae164f0": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "47beb2da-2237-4421-a73d-2b4261724c73",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jainal Gosaliya <jainal09gosalia@gmail.com>"
+    }
+  }
+}
