@@ -114,7 +114,14 @@ in a split below — no prompt, and the same window is reused each time rather
 than stacking splits. You land *in* that output split: if the script is still
 running — waiting on `input()`, say — you are at its prompt and can answer it,
 and once it has exited any key dismisses the window, swallowed rather than
-typed. `Ctrl+R` then `Ctrl+E` leaves you with three windows.
+typed.
+
+And if you go back to the file without dismissing it, it closes itself on the
+way out. That is not tidiness: standing outside it there was no key in this
+config that could close it, so it held fifteen rows until you resorted to `:q`
+— and `Ctrl+E` then opened the interpreter *underneath* it, leaving three
+windows with the file squeezed into what was left. A program still running is
+exempt, because that is one you may still be talking to.
 
 Out of the interpreter it is `Ctrl+E`, `Ctrl+\` `Ctrl+N`, or a click on the
 file. Nothing else is bound in terminal mode, on purpose: `Ctrl+C`, `Ctrl+D` and
@@ -283,7 +290,7 @@ and diffing what comes out. Nothing is mocked: if a case passes, that keystroke
 does that thing in this config.
 
 ```sh
-./tests/run.sh            # 440 cases; exit 0 only if all pass
+./tests/run.sh            # 462 cases; exit 0 only if all pass
 ./tests/run.sh sel_       # just the select-mode cases
 ```
 
@@ -295,6 +302,8 @@ does that thing in this config.
 | `suite_search.sh` | 12 | `Ctrl+F`, and exactly when the highlight appears and when it goes |
 | `suite_autosave.sh` | 8 | what is on **disk**, read back from the shell |
 | `suite_quit.sh` | 17 | pty: the confirmation is drawn, Cancel and Esc both return you to typing, Quit writes the pending edit, and all of it again from inside the REPL |
+| `suite_runwin.sh` | 12 | pty: the `Ctrl+R` output window — that it closes when you leave it, that any key still closes it from inside, that `Ctrl+R` then `Ctrl+E` is two windows and not three, and that a program still running is left alone |
+| `suite_netrw.sh` | 10 | pty: the directory listing is not a file — `Ctrl+S` does not wedge it, `Ctrl+E`/`Ctrl+R` start nothing. Headless is useless here: it does not produce a netrw buffer at all |
 | `suite_timer.sh` | 36 | not nvim at all — 18 assertions against `drill.sh` run under **bash and zsh**, which disagree about word splitting |
 | `suite_comment.sh` | 65 × 3 | the comment toggle, a full pass per `Ctrl+/` spelling |
 

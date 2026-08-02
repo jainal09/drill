@@ -94,9 +94,26 @@ local map = vim.keymap.set
 local S = { silent = true }
 local L = { silent = false }           -- loud: the cmdline prompt must stay visible
 
+-- A buffer you can actually type in -- and therefore the one predicate every
+-- guard in this file should be asking. It is defined here, before its first
+-- use, because getting it wrong is not theoretical:
+--
+--   `buftype ~= ""` does NOT mean "not the directory listing". netrw's buftype
+--   is EMPTY. Measured in the bare `d` listing: buftype '', modifiable 0,
+--   filetype 'netrw'. So a guard written as `buftype ~= ""` sails straight
+--   through netrw, and only the modifiable/filetype checks below stop it.
+--
+-- <C-s> used to guard that way, and pressing it in the listing raised a Lua
+-- traceback and left the editor behind a modal "Press ENTER or type command to
+-- continue" -- the exact failure this config went to trouble to eliminate for
+-- Ctrl+click. Measured before this fix: --remote-expr blocked until a <CR>.
+local function typing_buffer()
+  return vim.bo.buftype == "" and vim.bo.modifiable and vim.bo.filetype ~= "netrw"
+end
+
 -- save. CONFLICT 1: `stty -ixon` (in drill.sh) stops the tty eating ^S as XOFF.
 local function save()
-  if vim.bo.buftype ~= "" then return end   -- netrw / terminal buffer: nothing to save
+  if not typing_buffer() then return end    -- listing / terminal: nothing to save
   vim.cmd("write")                          -- real write errors still surface
 end
 map({ "n", "v", "i" }, "<C-s>", save, S)
@@ -129,8 +146,7 @@ local AUTOSAVE_MS = 700
 local autosave_gen = 0
 
 local function autosave_now()
-  if vim.bo.buftype ~= "" or not vim.bo.modifiable then return end
-  if vim.bo.filetype == "netrw" then return end
+  if not typing_buffer() then return end
   if vim.api.nvim_buf_get_name(0) == "" then return end   -- unnamed: :w would E32
   if not vim.bo.modified then return end
   vim.cmd("silent! update")     -- silent!: a read-only file must not interrupt you
@@ -528,12 +544,6 @@ end
 --        yanked back to the prompt is the opposite of what you asked for.
 -- ---------------------------------------------------------------------------
 
--- a buffer you can actually type in. netrw is the `d`-with-no-argument
--- directory listing: buftype is empty there too, but every letter is a command.
-local function typing_buffer()
-  return vim.bo.buftype == "" and vim.bo.modifiable and vim.bo.filetype ~= "netrw"
-end
-
 local function click_and_type()
   if not typing_buffer() then return end
   -- Plain :startinsert, and deliberately NOT :startinsert! -- with
@@ -678,10 +688,22 @@ end
 
 -- ":update" writes only when the buffer is actually dirty, so b:changedtick is
 -- an honest answer to "has the code moved on since python read it?".
+-- What <C-e> and <C-r> are about to run, and whether it has changed since the
+-- interpreter last read it.
+--
+-- Two guards, and both were missing. `buftype ~= ""` let the directory listing
+-- through, for the reason above; and expand("%:p") is the EMPTY STRING there,
+-- which in Lua is truthy -- so `if not f then return end` at both call sites
+-- never fired and <C-e> in the listing cheerfully opened a split running
+-- `python3 -i ''`, which is a runpy traceback and then a live >>>. Measured:
+-- winnr('$') == 2, bufname "term://...". An empty name has to be turned into
+-- nil for a `not f` guard to mean anything.
 local function source_state()
-  if vim.bo.buftype ~= "" then return last_file, repl_tick end   -- not a file: no news
+  if not typing_buffer() then return last_file, repl_tick end    -- not a file: no news
   vim.cmd("silent update")
-  last_file = vim.fn.expand("%:p")
+  local f = vim.fn.expand("%:p")
+  if f == "" then return nil end                                 -- nothing to run
+  last_file = f
   return last_file, vim.b.changedtick
 end
 
@@ -741,6 +763,46 @@ local function repl_hide()
   end
   type_here()                                          -- back in the editor, typing
 end
+
+-- ---------------------------------------------------------------------------
+-- A finished run window closes itself when you leave it.
+--
+-- <C-r>'s output is throwaway, and while you are standing IN it any key
+-- dismisses it -- that is nvim's own behaviour for a terminal whose job has
+-- ended, and it is why the run loop feels like "run, read it, carry on".
+--
+-- But only while you are standing in it. Go back to the file first -- a click,
+-- <C-w>k -- and nothing closes it, and there is no key in this config that
+-- will: it sits there holding 15 rows, typing in the file does not touch it,
+-- and the only way out is :q, which is the command line this editor exists to
+-- avoid. Worse, <C-e> then opens the interpreter UNDER it and you are looking
+-- at three windows with the file squeezed into whatever is left. Measured
+-- before this: winnr('$') == 3.
+--
+-- So leaving it is the dismissal. The job state is what makes that safe: a
+-- FINISHED program's output is just text you have read, but a program still
+-- running is one you may be talking to -- <C-r> on a script that calls input()
+-- puts you at its prompt -- so a live one is left exactly where it is.
+-- ---------------------------------------------------------------------------
+vim.api.nvim_create_autocmd("WinLeave", {
+  callback = function()
+    local win = vim.api.nvim_get_current_win()
+    if not (out_win and win == out_win) then return end
+    local buf = vim.api.nvim_win_get_buf(win)
+    if vim.bo[buf].buftype ~= "terminal" then return end
+    local id = vim.b[buf].terminal_job_id
+    if id and vim.fn.jobwait({ id }, 0)[1] == -1 then return end   -- still running
+    -- deferred: you cannot close the window you are in the middle of leaving,
+    -- and by the next tick the cursor is already somewhere else.
+    vim.schedule(function()
+      if out_win and vim.api.nvim_win_is_valid(out_win)
+         and #vim.api.nvim_list_wins() > 1 then          -- never the last window
+        pcall(vim.api.nvim_win_close, out_win, true)
+      end
+      out_win = nil
+    end)
+  end,
+})
 
 -- ...and however else you move between the two windows (<C-w>j/k, mouse), the
 -- same rule holds: land in a live terminal -> at the prompt; land back on the

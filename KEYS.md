@@ -145,6 +145,12 @@ started? `Ctrl+E` restarts python with the new code. Didn't touch it? Same
 session, so whatever you were poking at in the REPL is still there. There is no
 reload key because there is nothing to reload.
 
+**The run split gets out of your way.** `Ctrl+R` drops you *in* the output, so
+any key dismisses it and you carry on — and if you go back to the file first
+instead, it closes itself the moment you leave it. What it will not do is close
+a program that is still running: `Ctrl+R` on a script that calls `input()` puts
+you at its prompt, and that window stays until the program is done with you.
+
 `Ctrl+R` and `Ctrl+E` work mid-typing with no Esc first, which is why they're
 preferred over `F5`/`F6` — macOS also claims those for dictation and focus.
 
@@ -161,6 +167,21 @@ Costs: `Ctrl+R` was normal-mode redo (use `Ctrl+Y`), `Ctrl+E` was scroll-down.
 
 To scroll back through output, `Ctrl+\` `Ctrl+N` first — otherwise the wheel
 goes to python.
+
+## The directory listing
+
+`d` / `dt` / `ds` with no argument opens the listing instead of a file. It is
+not a buffer you type in, and the keys that only make sense on a file now say
+so by doing nothing: `Ctrl+S` has nothing to save, `Ctrl+E` and `Ctrl+R` have
+nothing to run. Clicking a filename opens it — that is netrw's own handler, and
+it is left alone.
+
+Both of those used to misbehave, for the same reason: **netrw's `buftype` is
+empty**, so a guard written as `buftype ~= ""` does not exclude it. `Ctrl+S`
+raised a Lua traceback and left the editor stuck behind a modal *"Press ENTER
+or type command to continue"*, and `Ctrl+E` opened a split running
+`python3 -i ''` — the listing has no filename, `expand("%:p")` is `""`, and an
+empty string is *truthy* in Lua, so the "nothing to run" guard never fired.
 
 ## Exiting
 

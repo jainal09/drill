@@ -54,6 +54,8 @@ run "mouse: click to caret"         suite_mouse.sh
 run "find + search highlight"       suite_search.sh
 run "autosave"                      suite_autosave.sh
 run "quit confirmation"             suite_quit.sh
+run "run-window lifecycle"          suite_runwin.sh
+run "directory listing"             suite_netrw.sh
 run "shell: timer"                  suite_timer.sh
 
 # Ctrl+/ has no legacy control byte, so a terminal sends it EITHER as 0x1F
