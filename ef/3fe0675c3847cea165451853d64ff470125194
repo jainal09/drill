@@ -1,0 +1,38 @@
+KEYS.md
+  s_cad2a66ae164f0::t_8539791c63b9eb 104,116-118
+  s_cad2a66ae164f0::t_6eb06db5cba8d4 105-115
+nvimrc.lua
+  s_cad2a66ae164f0::t_1defeca2fadc1a 376-382
+  s_cad2a66ae164f0::t_be6eed496aed01 283-299,305,363,389-390
+  s_cad2a66ae164f0::t_16f18eaf69c2af 317-329,332
+  s_cad2a66ae164f0::t_192a711b09ffb3 252-269,274-282,300-304,306-316,330-331,334-347,360,366-369,371-375,383-388,391-397,399-400
+  s_cad2a66ae164f0::t_1218f83c6af64f 270-273,333,398,1022-1026
+  s_cad2a66ae164f0::t_ab94ecdc91f1ab 348-359,361-362,364-365,370
+tests/suite_search.sh
+  s_cad2a66ae164f0::t_6eb06db5cba8d4 67-69,171-207
+  s_cad2a66ae164f0::t_e5d81c9db822c8 60-66,138-165,168-170
+  s_cad2a66ae164f0::t_5339a8b59920aa 208-221
+  s_cad2a66ae164f0::t_08f02b449d4cf8 166-167
+  s_cad2a66ae164f0::t_af29e848d7deac 222
+README.md
+  s_cad2a66ae164f0::t_8539791c63b9eb 236-241
+  s_cad2a66ae164f0::t_6eb06db5cba8d4 231-235,304,313
+tests/quit_drive.py
+  s_cad2a66ae164f0::t_391f9c0b6b029a 152-170
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.20",
+  "base_commit_sha": "ef3fe0675c3847cea165451853d64ff470125194",
+  "prompts": {},
+  "sessions": {
+    "s_cad2a66ae164f0": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "47beb2da-2237-4421-a73d-2b4261724c73",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jainal Gosaliya <jainal09gosalia@gmail.com>"
+    }
+  }
+}
