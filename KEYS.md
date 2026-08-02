@@ -112,8 +112,11 @@ a letter, `Delete`, `Backspace` — replaces the lot and leaves you typing.
 ## Still vim
 
 Everything else is untouched: `hjkl`, `w/b/e`, `dd`, `yy`, `p`, `ciw`, `.`,
-macros, marks, `:%s/…`, visual mode, text objects. `u` and `Ctrl+R` still
-undo/redo alongside `Ctrl+Z`/`Ctrl+Y`.
+macros, marks, `:%s/…`, visual mode, text objects. `u` still undoes.
+
+**`Ctrl+R` does not redo here** — it saves and runs the file, in normal *and*
+insert mode, so `i_CTRL-R` (`Ctrl+R "` to paste a register) is gone too. Redo is
+`Ctrl+Y`, or `Ctrl+Shift+Z` on a terminal that speaks CSI-u.
 
 ## Run and interpret
 
@@ -132,7 +135,10 @@ type code  ->  Ctrl+E  ->  typing at >>>  ->  Ctrl+E  ->  back in the file, in I
 
 You never press `i`, and you never press Esc. Landing in a live interpreter puts
 you at the prompt; landing back on the file puts you in insert. `Ctrl+W j` /
-`Ctrl+W k` and mouse clicks follow the same rule.
+`Ctrl+W k` and mouse clicks follow the same rule — *leaving the file*. They do
+not work leaving the **interpreter**: nothing but `Ctrl+E` and `Ctrl+Shift+Q` is
+bound in terminal mode, deliberately, so `Ctrl+W` goes to python as a word-erase
+and you stay put. Out of the REPL it is `Ctrl+E`, `Ctrl+\` `Ctrl+N`, or a click.
 
 **The interpreter always has the code you can see.** Edited the file since it
 started? `Ctrl+E` restarts python with the new code. Didn't touch it? Same
@@ -255,6 +261,20 @@ Every one of these was a real collision, not a hypothetical.
     other by 4. It uses the buffer API instead, same rule as `Ctrl+/`: change the
     lines, never the mode. Output is byte-identical to `:>` otherwise.
 
+11. **Clearing the search highlight from an autocmd silently does nothing.** An
+    autocmd body runs inside a save/restore of the search state, so writing
+    `v:hlsearch` from an `InsertEnter` callback is put back on the way out —
+    measured, the flag read 0 inside the callback and 1 again by `InsertLeave`.
+    `:nohlsearch` has the same problem. `vim.schedule` lands the write after
+    that context unwinds, where it sticks.
+
+12. **The usual auto-save recipe never fires here.** Every autosave snippet
+    hangs off `InsertLeave`, and in a config where `:startinsert` is the resting
+    state you can drill for an hour without leaving insert once. `TextChangedI`
+    is the event that tracks typing — which fires per keystroke, so it is
+    debounced 700ms with a generation counter. Measured: 30 keystrokes, 2
+    writes.
+
 Two smaller traps, both found the hard way:
 
 - A **literal trailing space is stripped from a mapping's right-hand side**,
@@ -297,8 +317,11 @@ black-hole register: `"_dd`, `"_x`. `Delete`, `Backspace` and typing over a
 selection are already black-holed.
 
 **Mouse:** `mouse=a` means clicking and dragging go to vim, not to the terminal.
-To use your terminal's own selection, hold **Option** (macOS) or **Shift**
-(Linux) while dragging.
+Hold **Shift** while dragging to use your terminal's own selection — Shift is
+the one modifier this config deliberately leaves alone. **Option no longer works
+for that on macOS**: iTerm2 reports Option+drag to nvim rather than handling it
+itself, so the config now strips Option from the left button (see above) and an
+Option+drag is just a drag.
 
 **In the directory listing** (bare `d` / `dt` / `ds`) the mouse belongs to netrw,
 not to this config: netrw installs its own click handler, so clicking a name

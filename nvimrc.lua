@@ -94,7 +94,7 @@ local map = vim.keymap.set
 local S = { silent = true }
 local L = { silent = false }           -- loud: the cmdline prompt must stay visible
 
--- save. CONFLICT 1: `stty -ixon` (in drill.zsh) stops the tty eating ^S as XOFF.
+-- save. CONFLICT 1: `stty -ixon` (in drill.sh) stops the tty eating ^S as XOFF.
 local function save()
   if vim.bo.buftype ~= "" then return end   -- netrw / terminal buffer: nothing to save
   vim.cmd("write")                          -- real write errors still surface
@@ -104,7 +104,7 @@ map({ "n", "v", "i" }, "<C-s>", save, S)
 -- ---------------------------------------------------------------------------
 -- Auto-save  --  so <C-s> is something you never have to remember
 --
--- CONFLICT 9: the recipe everyone posts for this is an InsertLeave autocmd, and
+-- CONFLICT 12: the recipe everyone posts for this is an InsertLeave autocmd, and
 -- in THIS config it would essentially never fire. Every other editor's autosave
 -- leans on you leaving insert mode regularly; here :startinsert is the resting
 -- state and you can drill for an hour without leaving it once. The event that
@@ -220,7 +220,7 @@ map("i", "<C-f>", "<Esc>/", L)
 -- search the matches stay lit, so <C-f> is usable and n / N still walk them
 -- with the highlight on. Go back to typing and it clears.
 --
--- CONFLICT 8: it has to be DEFERRED, and both spellings need it. Clearing the
+-- CONFLICT 11: it has to be DEFERRED, and both spellings need it. Clearing the
 -- highlight from inside the autocmd itself does nothing at all -- an autocmd
 -- runs inside a save/restore of the search state, so the assignment is put back
 -- on the way out. Measured, with the naive version installed:
