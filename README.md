@@ -228,6 +228,17 @@ error at you mid-keystroke).
 
 ### Find, and the highlight going away
 
+`Ctrl+F` opens the search, and the end of the status line — right above the
+prompt — tells you what to do with it: *press Enter to search* while you type
+the pattern, then *n next   N previous   Esc back to search* once it has run.
+`Esc` reopens the prompt with your term still in it, so refining a search is
+one key rather than retyping it. That second hint is the one piece of vim this editor genuinely needs
+you to know — `Ctrl+F` leaves you in Normal mode on purpose, so `n` and `N` are
+live — and it is shown only while it is true. Start typing again and it goes,
+on the same keystroke that clears the highlight, because `n` and `N` have gone
+back to being letters. Cancel the search, or match nothing, and there is no
+hint at all rather than a wrong one.
+
 Search is **case-sensitive** and incremental — `ignorecase` and `smartcase` are
 both off, so `Ctrl+F` then `total` will not find `Total`. If you came from an
 editor that quietly folds case until you type a capital, that will catch you.
@@ -290,7 +301,7 @@ and diffing what comes out. Nothing is mocked: if a case passes, that keystroke
 does that thing in this config.
 
 ```sh
-./tests/run.sh            # 462 cases; exit 0 only if all pass
+./tests/run.sh            # 472 cases; exit 0 only if all pass
 ./tests/run.sh sel_       # just the select-mode cases
 ```
 
@@ -299,7 +310,7 @@ does that thing in this config.
 | `suite_options.sh` | 84 | config invariants no key-driven test can see: completion off at every source, zero LSP clients, no swap/backup/undo files, the cursor shape in both panes, and every mapping registered in the modes it claims — including that `Ctrl+/` is *not* bound in terminal mode and `Ctrl+C` is *not* bound in normal or terminal, so SIGINT still reaches a running program |
 | `suite_config.sh` | 30 | headless nvim: shift+arrow selection, `Tab`/`Shift+Tab`, cut/paste/select-all, undo/redo, `Ctrl+C` copying without losing the selection |
 | `suite_mouse.sh` | 58 | pty: click to caret from every mode, into empty space and past EOF, jitter in both axes, real drags, double-click, Option/Ctrl+click, and clicks between the file and the interpreter |
-| `suite_search.sh` | 12 | `Ctrl+F`, and exactly when the highlight appears and when it goes |
+| `suite_search.sh` | 22 | `Ctrl+F`, and exactly when the highlight appears and when it goes |
 | `suite_autosave.sh` | 8 | what is on **disk**, read back from the shell |
 | `suite_quit.sh` | 17 | pty: the confirmation is drawn, Cancel and Esc both return you to typing, Quit writes the pending edit, and all of it again from inside the REPL |
 | `suite_runwin.sh` | 12 | pty: the `Ctrl+R` output window — that it closes when you leave it, that any key still closes it from inside, that `Ctrl+R` then `Ctrl+E` is two windows and not three, and that a program still running is left alone |

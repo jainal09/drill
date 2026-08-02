@@ -101,7 +101,21 @@ auto-save off, delete the two `nvim_create_autocmd` blocks under
 "Auto-save" in `nvimrc.lua` — `Ctrl+S` alone works exactly as it always did.
 
 **Find** (`Ctrl+F`) lights up every match and drops you on the first one, in
-Normal mode, so `n` and `N` walk the matches with the highlight still on. The
+Normal mode, so **`n`** walks forward and **`N`** walks back, with the highlight
+still on. The right-hand end of the status line says so while it is true:
+*press Enter to search* while you are typing the pattern, then
+*n next   N previous   Esc back to search* once it has run — right above the
+prompt, where you are already looking. It borrows the end of the ruler for as
+long as it is up.
+
+**`Esc` reopens the search**, prefilled with the term you just used, so you can
+edit it rather than retype it. Like the hint, it exists only while there is a
+search to go back to: at rest `Esc` is plain vim's `Esc`, and it has to stay
+that way — a permanent mapping would swallow the `Esc` that cancels a pending
+count or operator. Both disappear the moment you go back to typing — the same keystroke that
+clears the highlight — because by then `n` and `N` are just letters again. A
+search you cancel, or one that matches nothing, gets no hint rather than a
+wrong one. The
 moment you go back to typing, the highlight clears — `hlsearch` is on by nvim
 default and nothing here used to turn it off, so matches stayed lit through the
 edit, the next one, and the one after, until you happened to run another search.

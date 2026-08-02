@@ -149,6 +149,25 @@ def main():
         ok("esc_also_cancels", v.alive(), "Esc quit the editor")
         ok("esc_returns_to_insert", v.q("mode(1)") == "i", v.q("mode(1)"))
 
+        # ---- the dialog must not be drawn over ---------------------------
+        # The search hint is a float, and the first version of it sat on the
+        # last text row -- exactly where nvim expands the message area for a
+        # multi-line prompt. The quit dialog came out mangled: the hint drawn
+        # truncated across it, and a stale line repainted over the choices.
+        v.send("\x1b", 0.3)
+        v.send("/", 0.6)
+        v.send("x", 0.4)
+        v.send("\r", 0.9)                        # a real search, hint now up
+        v.buf.clear()
+        v.send(CSQ, 1.3)
+        s = v.screen()
+        ok("dialog_draws_its_question", "Quit drill?" in s, s[-80:])
+        ok("dialog_draws_the_choices", "(Q)uit" in s and "[C]ancel" in s, s[-80:])
+        ok("nothing_drawn_over_the_dialog",
+           "previous" not in s and "press Enter" not in s, s[-80:])
+        v.send("c", 0.9)
+        ok("still_alive_after_that_cancel", v.alive(), "editor quit")
+
         # ---- and quitting for real ---------------------------------------
         # Type, then answer INSIDE the autosave debounce window, so the only
         # thing that can get these bytes to disk is the :wall on the way out.

@@ -57,8 +57,16 @@ vim.wait(300)                       -- let the deferred clear land
 -- measures what the user can actually see.
 local pat = vim.fn.getreg("/")
 local lit = (vim.v.hlsearch == 1 and pat ~= "") and 1 or 0
-io.stderr:write(string.format("\nRESULT\t%s\t%d\t%d\t%s\t%q\n",
-  vim.env.CASE, lit, vim.fn.line("."), tostring(vim.v.hlsearch), pat))
+-- the hint float, if one is up
+local hint = ""
+for _, w in ipairs(vim.api.nvim_list_wins()) do
+  if vim.api.nvim_win_get_config(w).relative ~= "" then
+    hint = vim.trim(vim.api.nvim_buf_get_lines(vim.api.nvim_win_get_buf(w), 0, -1, false)[1] or "")
+  end
+end
+io.stderr:write(string.format("\nRESULT\t%s\t%d\t%d\t%s\t%q\t%s\t%s\n",
+  vim.env.CASE, lit, vim.fn.line("."), tostring(vim.v.hlsearch), pat, hint,
+  vim.fn.maparg("<Esc>", "n") ~= "" and "bound" or "free"))
 LUA
 
 PASS=0; FAIL=0
@@ -126,6 +134,91 @@ t cancelled_keeps_prior_dark     '<C-f>seen<CR>iX<Esc><C-f><Esc>' 0
 t nomatch_then_insert_clears     '<C-f>zzzz<CR>i'         0 1
 # the highlight must survive a plain cursor move -- you are still reading
 t cursor_move_keeps_it_lit       '<C-f>seen<CR>j'         1 5
+
+echo
+echo "=== the hint that tells you n / N are live ==="
+# th <name> <keys> <expected hint text>
+th() {
+  local name="$1" keys="$2" want="$3"
+  if [ -n "$FILTER" ] && [[ "$name" != *"$FILTER"* ]]; then return; fi
+  cat > "$FIX" <<'PY'
+def bfs(grid, start):
+    rows = len(grid)
+    q = deque([start])
+    seen = set()
+    while q:
+        node = q.popleft()
+    return len(seen)
+PY
+  local out got
+  out="$(CASE="$name" KEYS="$keys" timeout 20 nvim --headless -i NONE -u "$CONFIG" \
+          "$FIX" -c "luafile $WORK/probe.lua" -c 'qa!' 2>&1 |
+        tr '\r' '\n' | grep -ao "RESULT.*" | tail -1)"
+  got="$(printf '%s' "$out" | cut -f7)"
+  if [ "$got" = "$want" ]; then
+    PASS=$((PASS+1)); printf '\033[32mPASS\033[0m  %s\n' "$name"
+  else
+    FAIL=$((FAIL+1)); BAD+=("$name")
+    printf '\033[31mFAIL\033[0m  %s  -- hint got=%s want=%s\n' "$name" "'$got'" "'$want'"
+  fi
+}
+
+th hint_appears_after_a_search    '<C-f>seen<CR>'      'n  next     N  previous     Esc  back to search'
+th hint_survives_n                '<C-f>seen<CR>n'     'n  next     N  previous     Esc  back to search'
+th hint_absent_when_nothing_matched '<C-f>zzzz<CR>'    ''
+th hint_absent_after_a_cancel     '<C-f>seen<Esc>'     ''
+th hint_absent_at_rest            'jk'                 ''
+
+echo
+echo "=== Esc goes back to the search input, but only while that is true ==="
+# te <name> <keys> <bound|free>
+te() {
+  local name="$1" keys="$2" want="$3"
+  if [ -n "$FILTER" ] && [[ "$name" != *"$FILTER"* ]]; then return; fi
+  cat > "$FIX" <<'PY'
+def bfs(grid, start):
+    rows = len(grid)
+    q = deque([start])
+    seen = set()
+    while q:
+        node = q.popleft()
+    return len(seen)
+PY
+  local out got
+  out="$(CASE="$name" KEYS="$keys" timeout 20 nvim --headless -i NONE -u "$CONFIG" \
+          "$FIX" -c "luafile $WORK/probe.lua" -c 'qa!' 2>&1 |
+        tr '\r' '\n' | grep -ao "RESULT.*" | tail -1)"
+  got="$(printf '%s' "$out" | cut -f8)"
+  if [ "$got" = "$want" ]; then
+    PASS=$((PASS+1)); printf '\033[32mPASS\033[0m  %s\n' "$name"
+  else
+    FAIL=$((FAIL+1)); BAD+=("$name")
+    printf '\033[31mFAIL\033[0m  %s  -- <Esc> got=%s want=%s\n' "$name" "'$got'" "'$want'"
+  fi
+}
+
+# A PERMANENT Normal-mode <Esc> mapping would swallow the Esc that cancels a
+# pending count or operator, which is still plain vim here. It exists only
+# while there is a search to go back to.
+te esc_free_at_rest               'jk'                 free
+te esc_bound_after_a_search       '<C-f>seen<CR>'      bound
+te esc_bound_after_n              '<C-f>seen<CR>n'     bound
+te esc_free_when_nothing_matched  '<C-f>zzzz<CR>'      free
+te esc_free_after_a_cancel        '<C-f>seen<Esc>'     free
+# TWO cases are NOT asserted here, both for the same reason: feedkeys 'xt'
+# delivers every key in one burst and force-ends Insert as the typeahead
+# drains, so by the time this probe looks, mode is back to Normal and the
+# deferred show has landed. Headless cannot tell either case from the broken
+# one. Both are measured in a pty instead:
+#   * the hint goes when you start typing again  -- after <C-f>seen<CR> then i
+#     the float is gone, and stays gone while typing.
+#   * a ":" command raises no search hint. This one matters more than it looks:
+#     an autocmd PATTERN is matched as a FILE pattern, where "?" means "any
+#     single character", so pattern={"/","?"} fired for EVERY one-character
+#     cmdtype -- ":" commands, input() prompts, and the confirm() dialog behind
+#     <C-S-q>, which is how the quit dialog ended up with "press Enter to
+#     search" repainted across it. The cmdtype is checked in the callback now,
+#     and suite_quit.sh asserts the dialog draws clean.
 
 echo
 echo "=========================================================="

@@ -250,6 +250,155 @@ vim.api.nvim_create_autocmd("InsertEnter", {
 })
 
 -- ---------------------------------------------------------------------------
+-- ...and the search tells you what to do next.
+--
+-- The prompt is a bare "/" with a cursor after it. Nothing on screen says that
+-- Enter runs it, and nothing says that once it has run, n and N walk the
+-- matches -- which is the one piece of vim this editor genuinely needs you to
+-- know, because <C-f> deliberately leaves you in Normal mode so those keys are
+-- live. So it says so, in the corner, in italics, and only while it is true.
+--
+-- A float rather than :echo, because the cmdline is already spoken for: the
+-- prompt itself is on that row while you type, and the moment you press Enter
+-- nvim writes its own "/seen  [2/3]" there. Echoing would have to destroy the
+-- match counter to say anything, and the counter is worth more than the hint.
+--
+-- It lives exactly as long as the highlight does -- same InsertEnter, same
+-- moment -- so it cannot end up advertising keys that have gone back to being
+-- letters. Getting that wrong would be worse than no hint at all.
+-- ---------------------------------------------------------------------------
+-- Reachable from quit_drill, far below: a blocking prompt must be able to get
+-- the hint off the screen before it draws.
+local hide_search_hint = function() end
+
+do
+  local hint_win, hint_buf = nil, nil
+
+  -- italic, in the colourscheme's own comment colour rather than a hardcoded
+  -- grey, so it stays quiet whichever scheme is swapped in at the top of the file
+  local comment = vim.api.nvim_get_hl(0, { name = "Comment", link = false })
+  vim.api.nvim_set_hl(0, "DrillSearchHint",
+    { fg = comment and comment.fg or nil, italic = true })
+
+  -- Esc reopens the search, prefilled with the term you just used, so you can
+  -- edit it instead of retyping it. It is mapped ONLY while the hint is up and
+  -- unmapped the moment it goes -- the pair is what keeps this honest. A
+  -- permanent Normal-mode <Esc> mapping would swallow the Esc that cancels a
+  -- pending count or operator, which is still plain vim here.
+  local function back_to_search()
+    local pat = vim.fn.getreg("/")
+    -- "n": typed as-is, NOT through replace_termcodes -- a pattern containing
+    -- something like <C-r> must arrive as those five characters, not as a key.
+    vim.api.nvim_feedkeys("/" .. pat, "n", false)
+  end
+
+  local function esc_unbind() pcall(vim.keymap.del, "n", "<Esc>") end
+  local function esc_bind()
+    vim.keymap.set("n", "<Esc>", back_to_search, { silent = true })
+  end
+
+  local function hint_hide()
+    if hint_win and vim.api.nvim_win_is_valid(hint_win) then
+      pcall(vim.api.nvim_win_close, hint_win, true)
+    end
+    hint_win = nil
+    esc_unbind()
+  end
+
+  local function hint_show(text)
+    if vim.o.lines < 4 or vim.o.columns < 24 then return end   -- no room: say nothing
+    if not (hint_buf and vim.api.nvim_buf_is_valid(hint_buf)) then
+      hint_buf = vim.api.nvim_create_buf(false, true)
+      vim.bo[hint_buf].bufhidden = "hide"
+    end
+    local line = " " .. text .. " "
+    vim.api.nvim_buf_set_lines(hint_buf, 0, -1, false, { line })
+    local w = vim.fn.strdisplaywidth(line)
+    -- The STATUSLINE row -- right above the prompt, which is where you are
+    -- looking. Getting here took two wrong answers:
+    --   * the last TEXT row (lines-3) is where nvim expands the message area
+    --     for a multi-line prompt. <C-S-q> with the hint up drew the quit
+    --     dialog mangled -- measured at 20 rows, the float sat at row 17 and
+    --     the screen showed "n next N previou" truncated with a stale "press
+    --     Enter to search" repainted across the choices.
+    --   * the top row is safe but useless: the hint is about the search, and
+    --     the search is at the bottom of the screen.
+    -- The statusline is never expanded over by messages, and the one prompt
+    -- that would fight it -- confirm(), behind <C-S-q> -- calls
+    -- hide_search_hint() before it draws. The cost is the right-hand end of
+    -- the ruler while a hint is up, and it comes back the moment the hint goes.
+    local cfg = {
+      relative = "editor",
+      row = math.max(0, vim.o.lines - 2),
+      col = math.max(0, vim.o.columns - w),
+      width = w, height = 1,
+      style = "minimal", focusable = false, zindex = 200, noautocmd = true,
+    }
+    if hint_win and vim.api.nvim_win_is_valid(hint_win) then
+      pcall(vim.api.nvim_win_set_config, hint_win, cfg)
+    else
+      local ok, win = pcall(vim.api.nvim_open_win, hint_buf, false, cfg)
+      if not ok then return end
+      hint_win = win
+      vim.wo[hint_win].winhl = "Normal:DrillSearchHint"
+    end
+    vim.cmd("redraw")
+  end
+
+  -- The cmdtype is checked in the CALLBACK, not with a pattern, and that is not
+  -- a style choice. An autocmd pattern is matched as a FILE pattern, where "?"
+  -- means "any single character" -- so pattern = { "/", "?" } fires for EVERY
+  -- one-character cmdtype: ":" commands, input() prompts, and the confirm()
+  -- dialog behind <C-S-q>. Measured: pressing <C-S-q> with a search hint up
+  -- popped "press Enter to search" back onto the screen on top of the quit
+  -- dialog, because confirm() matched "?".
+  local function is_search()
+    local t = vim.v.event and vim.v.event.cmdtype
+    return t == "/" or t == "?"
+  end
+
+  vim.api.nvim_create_autocmd("CmdlineEnter", {
+    callback = function()
+      if not is_search() then return hint_hide() end
+      esc_unbind()   -- the prompt is open; Esc there cancels it, as it should
+      hint_show("press Enter to search")
+    end,
+  })
+
+  vim.api.nvim_create_autocmd("CmdlineLeave", {
+    callback = function()
+      if not is_search() then return end
+      local aborted = vim.v.event and vim.v.event.abort
+      -- Deferred for the same reason the highlight clear is: the search has not
+      -- actually run yet when CmdlineLeave fires, so "did it match?" cannot be
+      -- answered from in here.
+      vim.schedule(function()
+        -- Still in Normal? Deferring the show opens a race against the hide:
+        -- press i quickly enough after Enter and InsertEnter fires FIRST, hides
+        -- the hint, and then this lands and puts it back -- leaving "n next
+        -- N previous" on screen in insert mode, where both are just letters.
+        -- Caught by the headless suite, where every key arrives in one burst
+        -- and the race is the normal case rather than the rare one.
+        if vim.fn.mode(1):sub(1, 1) ~= "n" then return hint_hide() end
+        local pat = vim.fn.getreg("/")
+        -- Nothing to walk means nothing to advertise: a cancelled search, or one
+        -- whose pattern matches nothing, gets no hint rather than a wrong one.
+        if aborted or pat == "" or vim.fn.search(pat, "nw") == 0 then
+          return hint_hide()
+        end
+        esc_bind()
+        hint_show("n  next     N  previous     Esc  back to search")
+      end)
+    end,
+  })
+
+  -- the hint and the highlight end together, on the keystroke that makes both
+  -- of them false
+  vim.api.nvim_create_autocmd({ "InsertEnter", "VimResized" }, { callback = hint_hide })
+  hide_search_hint = hint_hide
+end
+
+-- ---------------------------------------------------------------------------
 -- toggle comment on line(s)  --  Ctrl+/
 --
 -- Three separate things were wrong before, and all three had to be fixed:
@@ -870,6 +1019,11 @@ local function repl_running()
 end
 
 local function quit_drill()
+  -- Off the screen before the dialog draws. Belt and braces alongside moving
+  -- the hint to the top row: a prompt is the one thing that repaints the whole
+  -- bottom of the screen, and a float competing with it looks like a bug in the
+  -- editor rather than in the hint.
+  hide_search_hint()
   -- The prompt says what you are about to kill. Quitting with a live REPL is
   -- normal here -- <C-e> leaves python running on purpose -- so this is a
   -- reminder, not a warning, and Quit is still one keystroke away.
