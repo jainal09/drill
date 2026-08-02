@@ -11,6 +11,8 @@
 #    ./demo.sh --only find,mouse  a few
 #    ./demo.sh --speed 0.5        half the pauses (2 = twice as slow)
 #    ./demo.sh --keys socket      send keys to nvim directly (see below)
+#    ./demo.sh --check            dry-run the risky chords and report -- do this
+#                                 BEFORE you record, not during
 #
 #  HOW THE KEYS ARE SENT, and why it matters for your recording
 #  -----------------------------------------------------------
@@ -40,10 +42,12 @@ SPEED="${DEMO_SPEED:-1}"
 KEYMODE="auto"
 ONLY=""
 LIST=0
+CHECK=0
 
 while [ $# -gt 0 ]; do
   case "$1" in
     --list)   LIST=1; shift ;;
+    --check)  CHECK=1; shift ;;
     --only)   ONLY="$2"; shift 2 ;;
     --speed)  SPEED="$2"; shift 2 ;;
     --keys)   KEYMODE="$2"; shift 2 ;;
@@ -136,7 +140,13 @@ _applescript_for() {
     S-Right) echo 'key code 124 using {shift down}' ;;
     S-Down)  echo 'key code 125 using {shift down}' ;;
     S-Up)    echo 'key code 126 using {shift down}' ;;
-    C-_)   echo 'keystroke "/" using {control down}' ;;   # Ctrl+/ is what you press
+    # Ctrl+/ -- `key code 44`, NOT `keystroke "/"`. AppleScript's keystroke is
+    # unreliable at applying a modifier to PUNCTUATION: measured, `keystroke "/"
+    # using {control down}` dropped the Ctrl and typed a literal slash, so the
+    # comment chapter put "//" into a python file instead of toggling "#" twice.
+    # Letters are fine, which is why every other chord here still uses keystroke.
+    # 44 is "/" on a US layout; on another layout, use --keys socket.
+    C-_)   echo 'key code 44 using {control down}' ;;
     CS-*)  printf 'keystroke "%s" using {control down, shift down}\n' "$(printf '%s' "${k#CS-}" | tr 'A-Z' 'a-z')" ;;
     C-*)   printf 'keystroke "%s" using {control down}\n' "$(printf '%s' "${k#C-}" | tr 'A-Z' 'a-z')" ;;
     *)     printf 'keystroke "%s"\n' "$k" ;;
@@ -555,6 +565,93 @@ demo_quit() {
   key q
   pause 1.5
 }
+
+# ---------------------------------------------------------------------------
+# --check : does every chord actually arrive as a chord?
+# ---------------------------------------------------------------------------
+# The universal symptom of a chord that did not survive the trip is that it gets
+# typed into the buffer as a LITERAL character. That is what happened to Ctrl+/
+# under System Events -- the modifier was dropped and the comment chapter put
+# "//" into a python file. So every check below is the same shape: note the
+# line, press the chord, and see whether the buffer changed the way that chord
+# should change it, and only that way.
+preflight() {
+  local fails=0
+  printf 'demo.sh --check : keys via %s\n\n' "$KEYMODE"
+  printf 'x = 1\n' > "$FILE"
+  rm -f "$SOCK"
+  # NOT >/dev/null. nvim needs a real screen: with stdout discarded it cannot
+  # draw, and anything that has to be DRAWN to exist -- the quit confirmation
+  # above all -- silently never appears. The first version of this preflight
+  # redirected the output to keep the check tidy and then reported the quit
+  # chord as broken, in an editor that had no way to show a prompt in the first
+  # place. It runs attached, like the tour does; you see the editor flash open.
+  nvim --listen "$SOCK" -i NONE -u "$CONFIG" -c "luafile $WORK/caption.lua" "$FILE" &
+  NVIM_PID=$!
+  local i
+  for i in $(seq 1 60); do [ -S "$SOCK" ] && break; sleep 0.15; done
+  sleep 1.2
+  editor_alive || { echo "  FAIL  the editor did not start"; return 1; }
+
+  ck() {                                   # ck <name> <got> <want>
+    if [ "$2" = "$3" ]; then
+      printf '  \033[32mok\033[0m    %-34s\n' "$1"
+    else
+      fails=$((fails + 1))
+      printf '  \033[31mFAIL\033[0m  %-34s got %s, wanted %s\n' "$1" "'$2'" "'$3'"
+    fi
+  }
+
+  ck "opens in insert" "$(nvx 'mode(1)')" "i"
+  type_text "AB"; pause 0.3
+  ck "plain typing" "$(nvx 'getline(1)')" "ABx = 1"
+
+  key C-_ ; pause 0.5
+  ck "Ctrl+/ comments (not '/')" "$(nvx 'getline(1)')" "# ABx = 1"
+  key C-_ ; pause 0.5
+  ck "Ctrl+/ uncomments" "$(nvx 'getline(1)')" "ABx = 1"
+
+  nv '<Cmd>call cursor(1,1)<CR>'
+  key S-Right; pause 0.4
+  ck "Shift+Right selects" "$(nvx 'mode(1)')" "s"
+  key Esc; pause 0.3
+
+  key C-z; pause 0.5
+  ck "Ctrl+Z undoes" "$(nvx 'getline(1)')" "x = 1"
+
+  # Ctrl+Shift+Q raises a blocking prompt; 'c' cancels it. If the chord did not
+  # survive, the 'q' and the 'c' land in the buffer instead and the line grows.
+  #
+  # Reset the mode and the line FIRST. The checks above end by Esc-ing out of
+  # Select mode and undoing, and this check reported a false failure from that
+  # state -- the chord itself is fine from a clean one, verified separately.
+  # A preflight that cries wolf is worse than no preflight.
+  nv '<C-\><C-n>'
+  nv '<Cmd>call setline(1, "x = 1")<CR>'
+  nv '<Cmd>call cursor(1,1)<CR>'
+  nv '<Cmd>startinsert<CR>'
+  pause 0.5
+  local before; before="$(nvx 'getline(1)')"
+  key CS-q; pause 1.1
+  key c;    pause 0.8
+  ck "Ctrl+Shift+Q prompts (CSI-u)" "$(nvx 'getline(1)')" "$before"
+  ck "...and Cancel came back alive" "$(editor_alive && echo yes || echo no)" "yes"
+
+  nv '<Cmd>qa!<CR>'
+  wait "$NVIM_PID" 2>/dev/null
+  printf '\n'
+  if [ "$fails" -eq 0 ]; then
+    printf '  all chords arrive intact -- safe to record.\n\n'
+    return 0
+  fi
+  printf '  %d chord(s) did not survive. Record with --keys socket instead:\n' "$fails"
+  printf '      ./demo.sh --keys socket\n'
+  printf '  (reliable everywhere, but your keycast app will not see the keys --\n'
+  printf '   the on-screen captions still name every one.)\n\n'
+  return 1
+}
+
+if [ "$CHECK" = 1 ]; then preflight; exit $?; fi
 
 # ---------------------------------------------------------------------------
 # run it
