@@ -1,0 +1,41 @@
+tests/preload_drive.py
+  s_80c9f75328aff9::t_0d51d20efedb8a 1-138
+install.sh
+  s_80c9f75328aff9::t_b56e2ff11782fd 102
+  s_80c9f75328aff9::t_ea6049d2b40349 59
+KEYS.md
+  s_80c9f75328aff9::t_3536d27c170c2e 169-176
+  s_80c9f75328aff9::t_998e0d77aeebe5 259-260
+nvimrc.lua
+  s_80c9f75328aff9::t_9256ec673ee7d6 927
+  s_80c9f75328aff9::t_f313722c933ceb 856-870
+  s_80c9f75328aff9::t_3cd8799212c0f7 939
+preload.py
+  s_80c9f75328aff9::t_17bbd5814af1df 1-47
+drill.sh
+  s_80c9f75328aff9::t_ebacecf3cfb723 94-106
+tests/run.sh
+  s_80c9f75328aff9::t_5b65322242f150 61
+tests/suite_preload.sh
+  s_80c9f75328aff9::t_81ff9a27a2f58b 1-134
+TODO.md
+  s_80c9f75328aff9::t_31f6605b798022 3-4
+README.md
+  s_80c9f75328aff9::t_ea643847bd72e5 46,49-54,143-144,155-162,322,338,406,417
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "33cb437afb7ca5fae2526d28d941f80e8a22c554",
+  "prompts": {},
+  "sessions": {
+    "s_80c9f75328aff9": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "72e32ddf-738c-41c0-a3b3-768b9570b8b1",
+        "model": "claude-fable-5"
+      },
+      "human_author": null
+    }
+  }
+}
