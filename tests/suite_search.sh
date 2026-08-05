@@ -221,6 +221,40 @@ te esc_free_after_a_cancel        '<C-f>seen<Esc>'     free
 #     and suite_quit.sh asserts the dialog draws clean.
 
 echo
+echo "=== on a real pty: the Esc chain, which headless cannot see ==="
+# feedkeys delivers every key in one burst and force-ends Insert as the
+# typeahead drains, so headless cannot tell "it went back to typing" from
+# "it never left". These run against a real terminal instead.
+if command -v python3 >/dev/null; then
+  DRILL_SOCK="${TMPDIR:-/tmp}/drill-search-$$.sock"
+  export DRILL_CONFIG="$CONFIG" DRILL_SOCK
+  PTY_OUT="$(timeout 180 python3 "$DIR/search_drive.py")"
+  RC=$?
+  rm -f "$DRILL_SOCK"
+  # a dead driver must be a loud failure, not a quiet skip: it prints its
+  # results once, at the very end, so a crash, hang or timeout means EMPTY
+  # output and zero cases counted -- the suite would pass with the Esc chain
+  # unguarded. Same guard as suite_quit.sh / suite_runwin.sh.
+  if [ $RC -ne 0 ] || [ -z "$PTY_OUT" ]; then
+    echo "suite_search.sh: pty driver failed (rc=$RC)" >&2
+    [ -n "$PTY_OUT" ] && echo "$PTY_OUT" >&2
+    exit 2
+  fi
+  while IFS=$'\t' read -r verdict name got; do
+    case "$verdict" in PASS|FAIL) ;; *) continue ;; esac
+    if [ -n "$FILTER" ] && [[ "$name" != *"$FILTER"* ]]; then continue; fi
+    if [ "$verdict" = PASS ]; then
+      PASS=$((PASS+1)); printf '\033[32mPASS\033[0m  %s\n' "$name"
+    else
+      FAIL=$((FAIL+1)); BAD+=("$name"); printf '\033[31mFAIL\033[0m  %s  -- got: %s\n' "$name" "$got"
+    fi
+  done <<< "$PTY_OUT"
+else
+  echo "suite_search.sh: python3 not on PATH -- the pty cases cannot run" >&2
+  exit 2
+fi
+
+echo
 echo "=========================================================="
 echo "CONFIG=$CONFIG  PASS=$PASS  FAIL=$FAIL"
 [ $FAIL -gt 0 ] && { echo "failing: ${BAD[*]}"; exit 1; }

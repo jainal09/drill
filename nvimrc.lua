@@ -222,7 +222,16 @@ map("n", "<C-a>", "gggH<C-o>G", S)
 map("i", "<C-a>", "<C-o>gg<C-o>gH<C-o>G", S)
 
 map("n", "<C-f>", "/", L)              -- find
-map("i", "<C-f>", "<Esc>/", L)
+-- Insert's <C-f> rides through Normal, and that <Esc> shifts the caret one
+-- column left before the prompt even opens. Fine if the search runs -- the
+-- caret goes to the match -- but the abort leg promises to put you back
+-- EXACTLY where you were typing, so the pre-<Esc> spot is stashed here and
+-- consumed there.
+local search_from = nil
+map("i", "<C-f>", function()
+  search_from = vim.api.nvim_win_get_cursor(0)
+  return "<Esc>/"
+end, { expr = true, silent = false })
 
 -- ...and the highlight goes away the moment you start typing again.
 -- 'hlsearch' is ON by default in nvim and this config never set it, so every
@@ -361,7 +370,12 @@ do
     callback = function()
       if not is_search() then return hint_hide() end
       esc_unbind()   -- the prompt is open; Esc there cancels it, as it should
-      hint_show("press Enter to search")
+      -- the Esc tail is only true where the abort leg below can startinsert:
+      -- in the listing (and the REPL's scrollback) Esc just cancels, and a
+      -- hint that overpromises is worse than no hint at all
+      hint_show(typing_buffer()
+        and "press Enter to search     Esc  back to typing"
+        or "press Enter to search")
     end,
   })
 
@@ -369,6 +383,37 @@ do
     callback = function()
       if not is_search() then return end
       local aborted = vim.v.event and vim.v.event.abort
+      -- Esc BACKS OUT ONE LEVEL, all the way. From a finished search it
+      -- reopens the prompt; from the prompt it drops the search and puts you
+      -- back where you were typing. Without this last step the chain dead-ends
+      -- in Normal mode with no key that returns you to insert -- which in an
+      -- editor whose premise is that you never press i is the wrong place to
+      -- leave someone.
+      if aborted then
+        vim.schedule(function()
+          if typing_buffer() then
+            local from = search_from
+            search_from = nil
+            if from then
+              -- put the caret back on the Insert spot stashed by <C-f>;
+              -- startinsert alone lands one column LEFT of it, because the
+              -- mapping's <Esc> had already shifted the cursor. At end of
+              -- line the stashed column is past the last character, where
+              -- Normal mode cannot sit -- that spot needs startinsert!.
+              pcall(vim.api.nvim_win_set_cursor, 0, from)
+              if from[2] >= #vim.api.nvim_get_current_line() then
+                vim.cmd("startinsert!")
+              else
+                vim.cmd("startinsert")
+              end
+            else
+              vim.cmd("startinsert")
+            end
+          end
+        end)
+      else
+        search_from = nil      -- the search ran; the stash is history
+      end
       -- Deferred for the same reason the highlight clear is: the search has not
       -- actually run yet when CmdlineLeave fires, so "did it match?" cannot be
       -- answered from in here.
