@@ -43,13 +43,15 @@ globally. **Your own `~/.config/nvim` and `~/.vimrc` are not touched.**
 - Stock Python 3, Neovim and fzf — and fzf only powers `d search`, never the
   editor. That's the whole dependency list.
 
-**One deliberate exception.** `filetype plugin indent on` is set, so Neovim's
+**Two deliberate exceptions.** `filetype plugin indent on` is set, so Neovim's
 bundled Python indent plugin is live (`indentexpr` is `python#GetIndent`) — type
 `def f():` and press Enter and the four spaces appear without you typing them.
-It is the one thing here that helps you type, and it stays because indentation
-is not the recall being drilled; `heapq.heappush(h, (dist, node))` is.
-Everything else on that list is absent, not merely off, and the test suite
-asserts it.
+And every run goes through `preload.py`, so `Counter`, `deque`, `heappush`,
+`permutations` and the rest of the interview toolkit are live with no import
+line in the file — the way the LeetCode judge has them baked in. Both stay for
+the same reason: indentation and the import preamble are not the recall being
+drilled; `heapq.heappush(h, (dist, node))` is. Everything else on that list is
+absent, not merely off, and the test suite asserts it.
 
 ## Install
 
@@ -138,8 +140,8 @@ only way to scroll back through the output — the wheel goes to python too.
 | `d search [query]` | fuzzy-pick a file under `scratch/` with fzf, matching folder or file names; Esc picks nothing. `search` is reserved — a file literally named `search.py` is `d ./search` |
 | `dt <name>` | same for `templates/` — nesting and `dt search` included |
 | `ds <name>` | same for `solves/` — nesting and `ds search` included |
-| `r <file>` | `python3 <file>` — anything after the name is passed to the script |
-| `ri <file>` | `python3 -i <file>` — REPL with the file's names already live |
+| `r <file>` | `python3 <file>`, toolkit pre-imported — anything after the name is passed to the script |
+| `ri <file>` | `python3 -i <file>` — REPL with the file's names already live, toolkit included |
 | `t` / `t10` | start a 25- / 10-minute timer, non-blocking; counts down in the window title, sound and a desktop notification at zero |
 | `t -k [id]` | stop it. The id is optional — there is only ever one running |
 | `t -l` | is one running? |
@@ -149,6 +151,14 @@ only way to scroll back through the output — the wheel goes to python too.
 `templates/`, so `ri day1` works from anywhere — including files nested in
 project folders: `r graph-prac/bfs/iterative` by path, or bare `r iterative`
 and it is found by a recursive walk, `scratch/` first.
+
+All four ways to run — `r`, `ri`, `Ctrl+R`, `Ctrl+E` — go through `preload.py`
+first: `Counter`, `deque`, `defaultdict`, `heappush`, `permutations`,
+`lru_cache`, `bisect_left`, `inf` and the rest of the toolkit are already
+imported, so the file you type stays import-free, like on LeetCode. Your own
+names always win — assign over one and it is yours — a traceback still points
+at your line, and `sys.argv` and `__name__ == "__main__"` behave exactly as
+plain `python3`. Delete `preload.py` and every run is plain `python3` again.
 
 Starting a timer prints its id and the command that stops it:
 
@@ -309,7 +319,7 @@ and diffing what comes out. Nothing is mocked: if a case passes, that keystroke
 does that thing in this config.
 
 ```sh
-./tests/run.sh            # 530 cases; exit 0 only if all pass
+./tests/run.sh            # 550 cases; exit 0 only if all pass
 ./tests/run.sh sel_       # just the select-mode cases
 ```
 
@@ -325,6 +335,7 @@ does that thing in this config.
 | `suite_netrw.sh` | 10 | pty: the directory listing is not a file — `Ctrl+S` does not wedge it, `Ctrl+E`/`Ctrl+R` start nothing. Headless is useless here: it does not produce a netrw buffer at all |
 | `suite_timer.sh` | 36 | not nvim at all — 18 assertions against `drill.sh` run under **bash and zsh**, which disagree about word splitting |
 | `suite_projects.sh` | 40 | also not nvim — nested `d <dir> <name>` and `d search` against stubbed `nvim`/`fzf` binaries in a scratch `DRILL_HOME`, under **bash and zsh** — including that `..` cannot leave the bucket and bracketed names resolve literally |
+| `suite_preload.sh` | 20 | the LeetCode desk: import-free files using the toolkit under `r`/`ri` in **bash and zsh** — shadowing, argv, `__name__`, exit codes, the plain-python3 fallback — plus a pty pass proving `Ctrl+R` and `Ctrl+E` route through the shim |
 | `suite_comment.sh` | 65 × 3 | the comment toggle, a full pass per `Ctrl+/` spelling |
 
 Run it before you push. It exists because four different "fixes" to `Ctrl+/`
@@ -392,6 +403,7 @@ And confirm it left your own setup alone: run plain `nvim` and check
 ~/drill/
   nvimrc.lua      the isolated editor
   drill.sh        the shell commands
+  preload.py      the interview toolkit, pre-imported into every run
   demo.sh         the guided tour, for recording
   KEYS.md         keybinding reference
   tests/          the gate -- ./tests/run.sh
@@ -402,7 +414,7 @@ And confirm it left your own setup alone: run plain `nvim` and check
   log.md          yours to fill
 ```
 
-`install.sh` copies `nvimrc.lua`, `drill.sh` and `KEYS.md` into `DRILL_HOME` and
+`install.sh` copies `nvimrc.lua`, `drill.sh`, `preload.py` and `KEYS.md` into `DRILL_HOME` and
 creates the directories; `tests/` and `demo.sh` stay in the clone, which is the
 same directory unless you pointed `DRILL_HOME` somewhere else.
 

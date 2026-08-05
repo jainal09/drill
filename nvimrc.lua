@@ -853,6 +853,21 @@ end
 -- run / interpreter. <C-e> is the whole interface: it shows the interpreter and
 -- it hides it, from any mode, and you are always typing wherever you land.
 local RUN_H = 15
+
+-- The LeetCode desk: preload.py lives next to this config, and every run and
+-- REPL routes through it, so Counter, deque, heappush and friends are live
+-- with no import line in the file. Resolved from this file's own path because
+-- the config deliberately knows nothing about DRILL_HOME; absent (an install
+-- that predates the shim), runs are plain python3, exactly as before.
+local preload = vim.fn.fnamemodify(debug.getinfo(1, "S").source:sub(2), ":p:h") .. "/preload.py"
+local function py_cmd(flags, f)
+  local cmd = "python3" .. flags .. " "
+  if vim.fn.filereadable(preload) == 1 then
+    cmd = cmd .. vim.fn.shellescape(preload) .. " "
+  end
+  return cmd .. vim.fn.shellescape(f)
+end
+
 local last_file = nil
 local out_win = nil                      -- plain-run window: throwaway, reused
 local repl_win, repl_buf = nil, nil      -- the python3 -i session
@@ -909,7 +924,7 @@ local function run_once()
   if out_win and vim.api.nvim_win_is_valid(out_win) then
     vim.api.nvim_win_close(out_win, true)              -- reuse, don't stack splits
   end
-  vim.cmd("botright " .. RUN_H .. "split | terminal python3 " .. vim.fn.shellescape(f))
+  vim.cmd("botright " .. RUN_H .. "split | terminal " .. py_cmd("", f))
   out_win = vim.api.nvim_get_current_win()
 end
 
@@ -921,7 +936,7 @@ local function repl_spawn(f, tick)
   else
     vim.cmd("botright " .. RUN_H .. "split")
   end
-  vim.cmd("terminal python3 -i " .. vim.fn.shellescape(f))
+  vim.cmd("terminal " .. py_cmd(" -i", f))
   repl_win, repl_buf = vim.api.nvim_get_current_win(), vim.api.nvim_get_current_buf()
   repl_file, repl_tick = f, tick
   if stale and stale ~= repl_buf and vim.api.nvim_buf_is_valid(stale) then
