@@ -299,11 +299,18 @@ DRILL_HOME="$(cd "$DRILL_HOME" && pwd)"
 # and destination are then the same directory, and `cp a a` refuses ("are the
 # same file"), which under `set -e` kills the install on the documented path.
 # Installing into the clone is not a mistake; there is simply nothing to copy.
+# Every file has to be THERE either way. Checking this only on the copying path
+# would let an incomplete clone install "successfully" from its own directory
+# and then add a `source .../drill.sh` line for a drill.sh that does not exist,
+# or leave d/dt/ds pointing at a missing nvimrc.lua.
+for f in nvimrc.lua drill.sh preload.py KEYS.md; do
+  [ -f "$SRC/$f" ] || bail "missing $f next to install.sh"
+done
+
 if [ "$SRC" = "$DRILL_HOME" ]; then
   say "running from $DRILL_HOME itself -- the files are already in place"
 else
   for f in nvimrc.lua drill.sh preload.py KEYS.md; do
-    [ -f "$SRC/$f" ] || bail "missing $f next to install.sh"
     if [ -f "$DRILL_HOME/$f" ] && ! cmp -s "$SRC/$f" "$DRILL_HOME/$f"; then
       cp "$DRILL_HOME/$f" "$DRILL_HOME/$f.bak"
       say "kept your old $f as $f.bak"
