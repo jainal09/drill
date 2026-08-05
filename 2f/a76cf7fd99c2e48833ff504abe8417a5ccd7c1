@@ -1,0 +1,60 @@
+KEYS.md
+  s_80c9f75328aff9::t_7e78e6c99552c4 253-258,261-263,266-268
+  s_80c9f75328aff9::t_500a2dae69acbf 269
+  s_80c9f75328aff9::t_3536d27c170c2e 169-176
+  s_80c9f75328aff9::t_998e0d77aeebe5 259-260
+install.sh
+  s_80c9f75328aff9::t_005f75d019745b 98-99
+  s_80c9f75328aff9::t_4f42cce456173e 46
+  s_80c9f75328aff9::t_ea6049d2b40349 59
+  s_80c9f75328aff9::t_b56e2ff11782fd 102
+tests/suite_projects.sh
+  s_80c9f75328aff9::t_5198e329afca7b 70-73,77,79
+  s_80c9f75328aff9::t_d42830f6b40212 188-190
+  s_80c9f75328aff9::t_5451c4954d06e6 1-43,49-69,74-76,78,80-85,87-187,191-224,244-258
+drill.sh
+  s_80c9f75328aff9::t_b0b1ebdafc03b2 71-73,81-82,89-91
+  s_80c9f75328aff9::t_e56836637bc29a 18-23,25-27,29,31-38,44-64,66-67
+  s_80c9f75328aff9::t_ebacecf3cfb723 94-106
+README.md
+  s_80c9f75328aff9::t_7e78e6c99552c4 43-44,70,139-142,151-153,340,416
+  s_80c9f75328aff9::t_ad0810fbd68743 143-144
+  s_80c9f75328aff9::t_fbe4f401cd6391 333
+  s_80c9f75328aff9::t_016a91e3104a1f 341
+  s_80c9f75328aff9::t_fe65be938404f8 410
+  s_80c9f75328aff9::t_02164228271a61 46,49-54
+  s_80c9f75328aff9::t_cb76da8658221e 155-162
+  s_80c9f75328aff9::t_b31a3734aba597 421
+TODO.md
+  s_80c9f75328aff9::t_e8569895e459d5 1-2
+  s_80c9f75328aff9::t_31f6605b798022 3-4
+tests/run.sh
+  s_80c9f75328aff9::t_1bc1254b8a84d6 60
+  s_80c9f75328aff9::t_5b65322242f150 61
+nvimrc.lua
+  s_80c9f75328aff9::t_f313722c933ceb 856-870
+  s_80c9f75328aff9::t_3cd8799212c0f7 939
+  s_80c9f75328aff9::t_9256ec673ee7d6 927
+tests/suite_preload.sh
+  s_80c9f75328aff9::t_81ff9a27a2f58b 1-134
+tests/preload_drive.py
+  s_80c9f75328aff9::t_0d51d20efedb8a 1-138
+preload.py
+  s_80c9f75328aff9::t_17bbd5814af1df 1-47
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.20",
+  "base_commit_sha": "2fa76cf7fd99c2e48833ff504abe8417a5ccd7c1",
+  "prompts": {},
+  "sessions": {
+    "s_80c9f75328aff9": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "72e32ddf-738c-41c0-a3b3-768b9570b8b1",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jainal Gosaliya <jainal09gosalia@gmail.com>"
+    }
+  }
+}
