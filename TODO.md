@@ -14,6 +14,15 @@ loudly:
 | `demo.sh` | `docs/recording.md` | every keystroke shells out to `bc`, which Ubuntu/WSL does not ship |
 | `./tests/run.sh` | `docs/testing.md` | 4 clipboard cases fail; `tests/bin/timeout` shadows real GNU `timeout` |
 
+"Stock WSL2 box" is not reproducible on its own, so: every row above was
+measured on **Ubuntu 22.04 (jammy) under WSL2**, kernel
+`6.18.33.2-microsoft-standard-WSL2`, WSLg present, **Windows Terminal
+1.24.11911.0**, zsh with oh-my-zsh. Neovim **0.12.4** locally (linuxbrew) and
+**0.11.0** in CI — both well past the 0.9 gate, so none of these are
+version-too-old artifacts. Where a row depends on a package being absent
+(`bc`, `paplay`, `notify-send`) that is the default state of that image, not a
+box someone stripped.
+
 **The rule that keeps macOS safe:** every change is additive and
 capability-probed, never `if not mac`. The existing macOS branch stays *first*
 in every chain with its exact semantics. `pbcopy`, `afplay` and `osascript` all
@@ -31,8 +40,11 @@ Landed as a stack of PRs, one per checkpoint, each based on the previous.
       per platform. Same stale `apt install` hint in `drill.sh` too.
       *Gate: `install.sh` into a temp `DRILL_HOME`.*
 - [ ] **2 — `wsl/02-clipboard`** · `nvimrc.lua`: native provider first, a
-      `clip.exe` + `powershell Get-Clipboard` shim only when the probe comes up
-      empty; and resolve `python3` past the `/mnt/.../WindowsApps` Store alias
+      `clip.exe` + `powershell Get-Clipboard` shim only when no *usable*
+      provider is found — "usable" being the load-bearing word, since an
+      installed `xclip` with no display is discovered and still cannot copy
+      anything, and an empty clipboard is not the same as an absent provider;
+      and resolve `python3` past the `/mnt/.../WindowsApps` Store alias
       that WSL's PATH interop otherwise hands us.
       *Gate: `suite_config.sh` clipboard cases green; copy/paste both directions by hand.*
 - [ ] **3 — `wsl/03-timer`** · `drill.sh`: `run()` currently reports success for
