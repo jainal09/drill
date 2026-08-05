@@ -1,0 +1,27 @@
+docs/recording.md
+  s_424c56492b11c1::t_8232f3dc118564 1-24
+docs/verify.md
+  s_424c56492b11c1::t_07a90382dfc308 1-42
+README.md
+  s_424c56492b11c1::t_cc5d05caecad2c 8-9,12,14-19,21,25,29,32-34,36,38-41,43-46,48-49,51,53-58,60,62-64,67-68,70-71,73,75-79,81,83-88,90,92-96,98,100,102-114,116,118,120-126,128,130-132,134-136,138,140-146
+docs/testing.md
+  s_424c56492b11c1::t_9dd7454d7cabe0 1-75
+docs/design.md
+  s_424c56492b11c1::t_c688bbbe51ddc1 1-221
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "c04222cf0b50ea8ec4aee463df156f1d8f0a5b25",
+  "prompts": {},
+  "sessions": {
+    "s_424c56492b11c1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "79aebfbd-e9d0-4164-a7c1-0d9d33793720",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jainal Gosaliya <jainal09gosalia@gmail.com>"
+    }
+  }
+}
