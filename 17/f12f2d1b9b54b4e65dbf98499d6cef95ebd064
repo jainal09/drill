@@ -1,0 +1,28 @@
+README.md
+  s_80c9f75328aff9::t_9184772013daa8 327
+  s_80c9f75328aff9::t_247e2e28422db2 312
+drill.sh
+  s_80c9f75328aff9::t_a018792dea22fa 75,83-88
+  s_80c9f75328aff9::t_e8458cd8c7395c 39-43
+  s_80c9f75328aff9::t_c09d4e9b9bda1b 65
+tests/suite_projects.sh
+  s_80c9f75328aff9::t_da8cae37f74f07 44-48
+  s_80c9f75328aff9::t_8e39627a664d5f 225-243
+  s_80c9f75328aff9::t_df6dffd36f33d2 86
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "17f12f2d1b9b54b4e65dbf98499d6cef95ebd064",
+  "prompts": {},
+  "sessions": {
+    "s_80c9f75328aff9": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "72e32ddf-738c-41c0-a3b3-768b9570b8b1",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jainal Gosaliya <jainal09gosalia@gmail.com>"
+    }
+  }
+}
