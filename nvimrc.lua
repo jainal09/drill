@@ -935,15 +935,32 @@ local preload = vim.fn.fnamemodify(debug.getinfo(1, "S").source:sub(2), ":p:h") 
 -- Everywhere else this stays the literal string "python3", exactly as before.
 local python = "python3"
 if vim.fn.exepath("python3"):match("^/mnt/") then
+  local found = nil
   for dir in (vim.env.PATH or ""):gmatch("[^:]+") do
     if not dir:match("^/mnt/") and vim.fn.executable(dir .. "/python3") == 1 then
-      python = vim.fn.shellescape(dir .. "/python3")
+      found = dir .. "/python3"
       break
     end
+  end
+  if found then
+    python = vim.fn.shellescape(found)
+  else
+    -- Nothing to fall back TO. Leaving the bare name here would hand Ctrl+R and
+    -- Ctrl+E the Store alias anyway, and they would open the Microsoft Store in
+    -- a 15-row split with nothing on screen explaining it. install.sh refuses
+    -- to proceed in this state, but nvim can be started without it, so say the
+    -- true thing once rather than fail mutely at the first keypress.
+    python = nil
+    vim.schedule(function()
+      vim.notify("drill: no Linux python3 on PATH -- `python3` is the Windows "
+        .. "Store alias, so Ctrl+R and Ctrl+E are disabled. "
+        .. "Install one (see docs/wsl.md).", vim.log.levels.WARN)
+    end)
   end
 end
 
 local function py_cmd(flags, f)
+  if not python then return nil end   -- no usable interpreter; callers bail
   local cmd = python .. flags .. " "
   if vim.fn.filereadable(preload) == 1 then
     cmd = cmd .. vim.fn.shellescape(preload) .. " "
@@ -1007,19 +1024,23 @@ local function run_once()
   if out_win and vim.api.nvim_win_is_valid(out_win) then
     vim.api.nvim_win_close(out_win, true)              -- reuse, don't stack splits
   end
-  vim.cmd("botright " .. RUN_H .. "split | terminal " .. py_cmd("", f))
+  local cmd = py_cmd("", f)
+  if not cmd then return end                           -- the warning already said why
+  vim.cmd("botright " .. RUN_H .. "split | terminal " .. cmd)
   out_win = vim.api.nvim_get_current_win()
 end
 
 -- start python on the current code, reusing the split if one is already there.
 local function repl_spawn(f, tick)
+  local cmd = py_cmd(" -i", f)
+  if not cmd then return end                           -- the warning already said why
   local stale = repl_buf
   if shows(repl_win, stale) then
     vim.api.nvim_set_current_win(repl_win)             -- swap in place, no flicker
   else
     vim.cmd("botright " .. RUN_H .. "split")
   end
-  vim.cmd("terminal " .. py_cmd(" -i", f))
+  vim.cmd("terminal " .. cmd)
   repl_win, repl_buf = vim.api.nvim_get_current_win(), vim.api.nvim_get_current_buf()
   repl_file, repl_tick = f, tick
   if stale and stale ~= repl_buf and vim.api.nvim_buf_is_valid(stale) then
