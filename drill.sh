@@ -36,6 +36,11 @@ _drill_edit() {
   name="$1"; shift
   while [ "$#" -gt 0 ]; do name="$name/$1"; shift; done
   name="${name%/}"                     # tolerate a trailing-slash typo
+  case "/$name/" in                    # d/dt/ds GUARANTEE their bucket: a
+    *"/../"*)                          # '..' would write outside it
+      echo "drill: '..' would leave $1/ -- names stay inside their folder" >&2
+      return 2 ;;
+  esac
   name="${name%.py}.py"
   case "$name" in
     */*) mkdir -p "$dir/${name%/*}" || return ;;
@@ -57,7 +62,7 @@ _drill_search() {
   fi
   [ -d "$dir" ] || { echo "drill: no directory $dir" >&2; return 1; }
   pick="$(cd "$dir" && find . -name '*.py' -type f | sed 's|^\./||' | sort |
-          fzf --query "${2:-}" --prompt 'drill> ' --preview 'head -40 {}')"
+          fzf --query "${2:-}" --prompt 'drill> ' --preview 'head -40 -- {}')"
   [ -n "$pick" ] || return 0
   nvim -u "$DRILL/nvimrc.lua" "$dir/$pick"
 }
@@ -67,7 +72,7 @@ _drill_search() {
 # bare names of files nested in project folders are found by a recursive
 # walk, scratch/ first
 _drill_find() {
-  local n="$1" sub f
+  local n="$1" sub f esc
   [ -f "$n" ] && { printf '%s\n' "$n"; return; }
   [ -f "$n.py" ] && { printf '%s\n' "$n.py"; return; }
   for sub in scratch solves templates .; do
@@ -75,8 +80,12 @@ _drill_find() {
   done
   case "$n" in
     */*) ;;   # a path that did not resolve above stays as typed
-    *)  for sub in scratch solves templates; do
-          f="$(find "$DRILL/$sub" -type f -name "${n%.py}.py" 2>/dev/null | sort | head -1)"
+    *)  # -name takes a GLOB, and d happily creates names like two-sum[easy]
+        # -- escape [ * ? \ so the walk finds the literal file instead of
+        # pattern-matching its way to a sibling (] alone is already literal)
+        esc="$(printf '%s' "${n%.py}" | sed 's/[[*?\\]/\\&/g')"
+        for sub in scratch solves templates; do
+          f="$(find "$DRILL/$sub" -type f -name "${esc}.py" 2>/dev/null | sort | head -1)"
           [ -n "$f" ] && { printf '%s\n' "$f"; return; }
         done ;;
   esac

@@ -41,6 +41,11 @@ exit 130
 EOF
 chmod +x "$STUB/nvim" "$STUB/fzf"
 cp "$STUB/nvim" "$STUB_NOFZF/nvim"; chmod +x "$STUB_NOFZF/nvim"
+# the missing-fzf PATH must be a CLOSED directory: keeping /usr/bin around
+# finds the real fzf on Linux (apt and dnf install it exactly there), and the
+# "guard" cases then run a real picker that grabs /dev/tty or hangs. Sourcing
+# drill.sh needs only cat (the timer heredoc); the guard itself is builtins.
+ln -s "$(command -v cat)" "$STUB_NOFZF/cat"
 
 reset_home() {
   rm -rf "$HOMEDIR"
@@ -78,8 +83,7 @@ for SH in bash zsh; do
   SH_BIN="$(command -v "$SH")" || { echo "skip: $SH not on PATH"; continue; }
   echo "===== $SH ====="
   STUBPATH="$STUB:$PATH"
-  # deterministic scrub: a dev box likely has real fzf on PATH
-  NOFZFPATH="$STUB_NOFZF:/usr/bin:/bin"
+  NOFZFPATH="$STUB_NOFZF"
 
   # ---- d <dir> <name> creates the folder and opens the file ------------
   reset_home
@@ -217,6 +221,25 @@ for SH in bash zsh; do
   OUT="$(run "$SH_BIN" "$STUBPATH" 'r hello')"
   case "$OUT" in *hi*) ok "${SH}_r_bare_name_finds_nested" 1 "" ;;
                  *) ok "${SH}_r_bare_name_finds_nested" 0 "$OUT" ;; esac
+
+  # ---- '..' cannot leave the bucket ------------------------------------
+  reset_home
+  OUT="$(run "$SH_BIN" "$STUBPATH" 'd ../escaped probe; echo "rc=$?"')"
+  if [ ! -s "$NVIM_LOG" ] && [ ! -e "$WORK/home/escaped" ] && [ ! -e "$HOMEDIR/escaped" ]; then
+    case "$OUT" in *"rc=2"*) ok "${SH}_dotdot_is_rejected" 1 "" ;;
+                   *) ok "${SH}_dotdot_is_rejected" 0 "$OUT" ;; esac
+  else
+    ok "${SH}_dotdot_is_rejected" 0 "escaped the bucket: $OUT"
+  fi
+
+  # ---- bracketed names resolve literally through the walk ---------------
+  reset_home
+  mkdir -p "$HOMEDIR/scratch/prob"
+  printf 'print("bracket-ok")\n' > "$HOMEDIR/scratch/prob/two-sum[easy].py"
+  printf 'print("WRONG FILE")\n'  > "$HOMEDIR/scratch/prob/two-sume.py"
+  OUT="$(run "$SH_BIN" "$STUBPATH" 'r "two-sum[easy]"')"
+  case "$OUT" in *bracket-ok*) ok "${SH}_bracket_name_resolves" 1 "" ;;
+                 *) ok "${SH}_bracket_name_resolves" 0 "$OUT" ;; esac
 
   # ---- './search' escapes the reserved word ----------------------------
   reset_home
