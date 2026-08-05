@@ -1280,6 +1280,12 @@ map({ "n", "i", "t" }, "<C-S-q>", quit_drill, S)
 --     the key. But it IS a real vim behaviour, so nowhere but WSL loses it.
 -- On macOS, and on any Linux terminal that does negotiate CSI-u, this whole
 -- block is skipped and nothing changes.
+-- "i" AND "t": <C-S-q> is bound in n/i/t precisely so you can quit from inside
+-- the interpreter without pressing <C-e> first, and a fallback that covered
+-- only insert would take that away on the one platform that needs it. Normal
+-- mode is the deliberate omission -- there <C-q> is visual block. python has no
+-- use for <C-q> either, and drill.sh's `stty -ixon` is what frees it from XON
+-- in the first place.
 if IS_WSL then
-  map("i", "<C-q>", quit_drill, S)
+  map({ "i", "t" }, "<C-q>", quit_drill, S)
 end
