@@ -10,7 +10,7 @@
 set -euo pipefail
 
 DRILL_HOME="${DRILL_HOME:-$HOME/drill}"
-SRC="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+SRC="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)"
 BEGIN_MARK="# >>> drill >>>"
 END_MARK="# <<< drill <<<"
 ASSUME_YES=0
@@ -290,8 +290,11 @@ fi
 # ---- files ------------------------------------------------------------
 mkdir -p "$DRILL_HOME/templates" "$DRILL_HOME/solves" "$DRILL_HOME/scratch"
 # resolve it the same way SRC is resolved, so the comparison below is between
-# two real paths and not between "~/drill" and "/home/you/drill"
-DRILL_HOME="$(cd "$DRILL_HOME" && pwd)"
+# two real paths and not between "~/drill" and "/home/you/drill".
+# -P on both: bash's cd/pwd resolve LOGICALLY by default, so a symlinked
+# DRILL_HOME pointing at the clone would compare unequal, the copy loop would
+# run, and `cp a a` would fail on the very case the guard exists to catch.
+DRILL_HOME="$(cd "$DRILL_HOME" && pwd -P)"
 
 # The README's own instructions are `git clone ...` then `cd drill &&
 # ./install.sh`. Run from your home directory -- which is where people run it --
