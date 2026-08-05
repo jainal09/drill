@@ -46,6 +46,10 @@ printf 'x = 40\ndq = deque([1, 2])\n' > "$HOMEDIR/scratch/names.py"
 printf 'import collections\nprint(collections.Counter("aa")["a"])\n' \
   > "$HOMEDIR/scratch/honest.py"
 printf 'import sys\nsys.exit(3)\n' > "$HOMEDIR/scratch/bye.py"
+mkdir -p "$HOMEDIR/scratch/pack"
+printf 'def helper():\n    return "sibling-ok"\n' > "$HOMEDIR/scratch/pack/util.py"
+printf 'import util\nprint(util.helper())\n' > "$HOMEDIR/scratch/pack/main.py"
+printf 'a = "alive-ok"\nraise ValueError("boom")\n' > "$HOMEDIR/scratch/crash.py"
 
 PASS=0; FAIL=0
 declare -a BAD=()
@@ -98,13 +102,34 @@ for SH in bash zsh; do
   case "$OUT" in *"rc=3"*) ok "${SH}_exit_code_propagates" 1 "" ;;
                  *) ok "${SH}_exit_code_propagates" 0 "$OUT" ;; esac
 
+  # sibling imports in a project folder resolve exactly as plain python3:
+  # sys.path[0] must be the FILE's directory, not the shim's
+  OUT="$(run "$SH" 'r pack/main')"
+  case "$OUT" in *sibling-ok*) ok "${SH}_sibling_imports_work" 1 "" ;;
+                 *) ok "${SH}_sibling_imports_work" 0 "$OUT" ;; esac
+
+  # a file that raises still leaves its names live at the ri prompt --
+  # the moment you most want to inspect them
+  OUT="$(run "$SH" 'printf "print(a)\n" | ri crash')"
+  case "$OUT" in *alive-ok*) ok "${SH}_ri_after_raise_keeps_names" 1 "" ;;
+                 *) ok "${SH}_ri_after_raise_keeps_names" 0 "$OUT" ;; esac
+
+  # a typo'd name reads like plain python3: the one-liner and exit 2, not a
+  # shim traceback and exit 1
+  OUT="$(run "$SH" 'r no-such-drill; echo "rc=$?"')"
+  case "$OUT" in *"can't open file"*"rc=2"*) ok "${SH}_typo_is_pythons_error" 1 "" ;;
+                 *) ok "${SH}_typo_is_pythons_error" 0 "$OUT" ;; esac
+
   # without the shim (an install that predates it) r must be plain python3:
   # a file with real imports still runs, a bare toolkit name is an honest
   # NameError rather than silent magic from some stale cache
   mv "$HOMEDIR/preload.py" "$HOMEDIR/preload.py.away"
+  # exact match: honest.py prints the single line "2", and nearly every
+  # failure text also contains a 2 somewhere -- "line 2", "[Errno 2]" -- so
+  # a *2* glob would green-light the exact regression this case guards
   OUT="$(run "$SH" 'r honest')"
-  case "$OUT" in *2*) ok "${SH}_fallback_runs_plain_python" 1 "" ;;
-                 *) ok "${SH}_fallback_runs_plain_python" 0 "$OUT" ;; esac
+  if [ "$OUT" = "2" ]; then ok "${SH}_fallback_runs_plain_python" 1 ""
+  else ok "${SH}_fallback_runs_plain_python" 0 "$OUT"; fi
   OUT="$(run "$SH" 'r counter; echo "rc=$?"')"
   case "$OUT" in *NameError*rc=1*) ok "${SH}_fallback_is_really_plain" 1 "" ;;
                  *) ok "${SH}_fallback_is_really_plain" 0 "$OUT" ;; esac
@@ -115,8 +140,18 @@ done
 echo "=== on a real pty: Ctrl+R and Ctrl+E route through the shim ==="
 DRILL_SOCK="${TMPDIR:-/tmp}/drill-preload-$$.sock"
 export DRILL_CONFIG="$CONFIG" DRILL_SOCK
-PTY_OUT="$(timeout 180 python3 "$DIR/preload_drive.py" 2>/dev/null)"
+PTY_OUT="$(timeout 180 python3 "$DIR/preload_drive.py")"
+RC=$?
 rm -f "$DRILL_SOCK"
+# a dead driver must be a loud failure, not a quiet skip: it prints its
+# results once, at the very end, so a crash, hang or timeout means EMPTY
+# output and both editor cases silently vanish from the gate. Same guard as
+# suite_quit.sh / suite_runwin.sh.
+if [ $RC -ne 0 ] || [ -z "$PTY_OUT" ]; then
+  echo "suite_preload.sh: pty driver failed (rc=$RC)" >&2
+  [ -n "$PTY_OUT" ] && echo "$PTY_OUT" >&2
+  exit 2
+fi
 while IFS=$'\t' read -r verdict name got; do
   case "$verdict" in PASS|FAIL) ;; *) continue ;; esac
   if [ -n "$FILTER" ] && [[ "$name" != *"$FILTER"* ]]; then continue; fi
