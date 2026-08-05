@@ -43,6 +43,7 @@ fi
 # ---- dependencies -----------------------------------------------------
 command -v nvim    >/dev/null 2>&1 || bail "neovim not found. brew install neovim (or apt install neovim)"
 command -v python3 >/dev/null 2>&1 || bail "python3 not found"
+command -v fzf     >/dev/null 2>&1 || bail "fzf not found. brew install fzf (or apt install fzf) -- 'd search' needs it"
 
 NVIM_VER="$(nvim --version | head -1 | sed 's/^NVIM v//')"
 NVIM_MAJOR="${NVIM_VER%%.*}"
@@ -94,6 +95,8 @@ cat <<EOF
   run 'exec \$SHELL' (or open a new terminal) to load the commands
 
   d  <name>     edit $DRILL_HOME/scratch/<name>.py      bare 'd'  -> dir listing
+  d  <dir> <name>  nested: scratch/<dir>/<name>.py, folders created as needed
+  d  search     fuzzy-pick a file with fzf ('dt search' / 'ds search' likewise)
   dt <name>     edit $DRILL_HOME/templates/<name>.py    bare 'dt' -> dir listing
   ds <name>     edit $DRILL_HOME/solves/<name>.py       bare 'ds' -> dir listing
   r  <file>     python3 <file>

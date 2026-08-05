@@ -40,7 +40,8 @@ globally. **Your own `~/.config/nvim` and `~/.vimrc` are not touched.**
 - No plugin manager, no distro
 - No swapfile, no backup, no undo file — the directory holds the `.py` you
   wrote and nothing else
-- Stock Python 3 and Neovim. That's the whole dependency list.
+- Stock Python 3, Neovim and fzf — and fzf only powers `d search`, never the
+  editor. That's the whole dependency list.
 
 **One deliberate exception.** `filetype plugin indent on` is set, so Neovim's
 bundled Python indent plugin is live (`indentexpr` is `python#GetIndent`) — type
@@ -64,7 +65,7 @@ your shell rc (backed up first). Uninstall with `./install.sh --uninstall`.
 
 To put it somewhere else: `DRILL_HOME=~/practice ./install.sh`.
 
-Requires Neovim 0.9+ and Python 3. Works on macOS and Linux, bash and zsh.
+Requires Neovim 0.9+, Python 3 and fzf. Works on macOS and Linux, bash and zsh.
 
 ## The loop
 
@@ -133,8 +134,10 @@ only way to scroll back through the output — the wheel goes to python too.
 | | |
 |---|---|
 | `d <name>` | edit `~/drill/scratch/<name>.py` — bare `d` opens the listing |
-| `dt <name>` | same for `templates/` |
-| `ds <name>` | same for `solves/` |
+| `d <dir> <name>` | nested drills: `scratch/<dir>/<name>.py`, folders created as needed — `d graph-prac/bfs iterative` and `d graph-prac/bfs/iterative` are the same file |
+| `d search [query]` | fuzzy-pick a file under `scratch/` with fzf, matching folder or file names; Esc picks nothing. `search` is reserved — a file literally named `search.py` is `d ./search` |
+| `dt <name>` | same for `templates/` — nesting and `dt search` included |
+| `ds <name>` | same for `solves/` — nesting and `ds search` included |
 | `r <file>` | `python3 <file>` — anything after the name is passed to the script |
 | `ri <file>` | `python3 -i <file>` — REPL with the file's names already live |
 | `t` / `t10` | start a 25- / 10-minute timer, non-blocking; counts down in the window title, sound and a desktop notification at zero |
@@ -143,7 +146,9 @@ only way to scroll back through the output — the wheel goes to python too.
 | `t -h` | the three lines above |
 
 `r` and `ri` take a bare name and find it under `scratch/`, `solves/` or
-`templates/`, so `ri day1` works from anywhere.
+`templates/`, so `ri day1` works from anywhere — including files nested in
+project folders: `r graph-prac/bfs/iterative` by path, or bare `r iterative`
+and it is found by a recursive walk, `scratch/` first.
 
 Starting a timer prints its id and the command that stops it:
 
@@ -304,7 +309,7 @@ and diffing what comes out. Nothing is mocked: if a case passes, that keystroke
 does that thing in this config.
 
 ```sh
-./tests/run.sh            # 490 cases; exit 0 only if all pass
+./tests/run.sh            # 526 cases; exit 0 only if all pass
 ./tests/run.sh sel_       # just the select-mode cases
 ```
 
@@ -319,6 +324,7 @@ does that thing in this config.
 | `suite_runwin.sh` | 12 | pty: the `Ctrl+R` output window — that it closes when you leave it, that any key still closes it from inside, that `Ctrl+R` then `Ctrl+E` is two windows and not three, and that a program still running is left alone |
 | `suite_netrw.sh` | 10 | pty: the directory listing is not a file — `Ctrl+S` does not wedge it, `Ctrl+E`/`Ctrl+R` start nothing. Headless is useless here: it does not produce a netrw buffer at all |
 | `suite_timer.sh` | 36 | not nvim at all — 18 assertions against `drill.sh` run under **bash and zsh**, which disagree about word splitting |
+| `suite_projects.sh` | 36 | also not nvim — nested `d <dir> <name>` and `d search` against stubbed `nvim`/`fzf` binaries in a scratch `DRILL_HOME`, under **bash and zsh** |
 | `suite_comment.sh` | 65 × 3 | the comment toggle, a full pass per `Ctrl+/` spelling |
 
 Run it before you push. It exists because four different "fixes" to `Ctrl+/`
@@ -391,7 +397,7 @@ And confirm it left your own setup alone: run plain `nvim` and check
   tests/          the gate -- ./tests/run.sh
   templates/      pattern skeletons
   solves/         daily attempts
-  scratch/        throwaway
+  scratch/        throwaway -- nest folders freely: scratch/graph-prac/bfs/...
   cheatsheet.py   yours to fill
   log.md          yours to fill
 ```
