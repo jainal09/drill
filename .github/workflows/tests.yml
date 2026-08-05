@@ -4,6 +4,10 @@ name: tests
 # nvim and on real ptys, so this is the same 556 cases you get locally -- not a
 # lint. It exists because "works on Linux" was a claim in the README that
 # nothing checked, and on a stock Ubuntu box it was not true.
+#
+# Every PR, and main. NOT every push: a branch with a PR open would then run the
+# whole 6-minute gate twice for one commit, once per event. A feature branch
+# pushed with no PR open is the deliberate gap -- open the PR and it is covered.
 on:
   push:
     branches: [main]
@@ -13,7 +17,9 @@ jobs:
   linux:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      # pinned to a commit, not the v4 tag: a tag is mutable, so the runner
+      # could execute different checkout code with no diff in this repo
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.3.0
 
       # NOT apt. Ubuntu's neovim is old enough that install.sh's own 0.9 gate
       # rejects it -- 22.04 ships 0.6.1 -- so the tarball, pinned, is the only
