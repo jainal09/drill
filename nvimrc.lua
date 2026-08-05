@@ -361,7 +361,7 @@ do
     callback = function()
       if not is_search() then return hint_hide() end
       esc_unbind()   -- the prompt is open; Esc there cancels it, as it should
-      hint_show("press Enter to search")
+      hint_show("press Enter to search     Esc  back to typing")
     end,
   })
 
@@ -369,6 +369,17 @@ do
     callback = function()
       if not is_search() then return end
       local aborted = vim.v.event and vim.v.event.abort
+      -- Esc BACKS OUT ONE LEVEL, all the way. From a finished search it
+      -- reopens the prompt; from the prompt it drops the search and puts you
+      -- back where you were typing. Without this last step the chain dead-ends
+      -- in Normal mode with no key that returns you to insert -- which in an
+      -- editor whose premise is that you never press i is the wrong place to
+      -- leave someone.
+      if aborted then
+        vim.schedule(function()
+          if typing_buffer() then vim.cmd("startinsert") end
+        end)
+      end
       -- Deferred for the same reason the highlight clear is: the search has not
       -- actually run yet when CmdlineLeave fires, so "did it match?" cannot be
       -- answered from in here.

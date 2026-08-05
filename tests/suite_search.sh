@@ -221,6 +221,29 @@ te esc_free_after_a_cancel        '<C-f>seen<Esc>'     free
 #     and suite_quit.sh asserts the dialog draws clean.
 
 echo
+echo "=== on a real pty: the Esc chain, which headless cannot see ==="
+# feedkeys delivers every key in one burst and force-ends Insert as the
+# typeahead drains, so headless cannot tell "it went back to typing" from
+# "it never left". These run against a real terminal instead.
+if command -v python3 >/dev/null; then
+  DRILL_SOCK="${TMPDIR:-/tmp}/drill-search-$$.sock"
+  export DRILL_CONFIG="$CONFIG" DRILL_SOCK
+  PTY_OUT="$(timeout 180 python3 "$DIR/search_drive.py" 2>/dev/null)"
+  rm -f "$DRILL_SOCK"
+  while IFS=$'\t' read -r verdict name got; do
+    case "$verdict" in PASS|FAIL) ;; *) continue ;; esac
+    if [ -n "$FILTER" ] && [[ "$name" != *"$FILTER"* ]]; then continue; fi
+    if [ "$verdict" = PASS ]; then
+      PASS=$((PASS+1)); printf '\033[32mPASS\033[0m  %s\n' "$name"
+    else
+      FAIL=$((FAIL+1)); BAD+=("$name"); printf '\033[31mFAIL\033[0m  %s  -- got: %s\n' "$name" "$got"
+    fi
+  done <<< "$PTY_OUT"
+else
+  echo "  (skipped: python3 not on PATH)"
+fi
+
+echo
 echo "=========================================================="
 echo "CONFIG=$CONFIG  PASS=$PASS  FAIL=$FAIL"
 [ $FAIL -gt 0 ] && { echo "failing: ${BAD[*]}"; exit 1; }

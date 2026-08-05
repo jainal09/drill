@@ -108,11 +108,16 @@ still on. The right-hand end of the status line says so while it is true:
 prompt, where you are already looking. It borrows the end of the ruler for as
 long as it is up.
 
-**`Esc` reopens the search**, prefilled with the term you just used, so you can
-edit it rather than retype it. Like the hint, it exists only while there is a
-search to go back to: at rest `Esc` is plain vim's `Esc`, and it has to stay
-that way — a permanent mapping would swallow the `Esc` that cancels a pending
-count or operator. Both disappear the moment you go back to typing — the same keystroke that
+**`Esc` backs out one level at a time.** From a finished search it reopens the
+prompt, prefilled with the term you just used, so refining it is one key rather
+than retyping it. From the prompt it drops the search and puts you back exactly
+where you were typing — caret still on the match, highlight gone. So `Ctrl+F`
+is a round trip you can always get out of without touching `i` or the command
+line.
+
+Like the hint, that mapping exists only while there is a search to go back to:
+at rest `Esc` is plain vim's `Esc`, and it has to stay that way — a permanent
+mapping would swallow the `Esc` that cancels a pending count or operator. Both disappear the moment you go back to typing — the same keystroke that
 clears the highlight — because by then `n` and `N` are just letters again. A
 search you cancel, or one that matches nothing, gets no hint rather than a
 wrong one. The
