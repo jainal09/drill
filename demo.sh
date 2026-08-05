@@ -176,9 +176,33 @@ nvx() { nvim --server "$SOCK" --remote-expr "$1" </dev/null 2>/dev/null; }
 # the same numbers.
 secs() { awk -v f="$1" -v s="$SPEED" 'BEGIN { printf "%.4f", f * s }'; }
 
+# Which spelling of the quit chord THIS nvim can actually be sent over the
+# socket. Resolved once, after the editor is up, because it is a property of the
+# config that editor loaded.
+#
+# --remote-send feeds keys through the legacy encoding, where Shift is dropped
+# from a control chord: <C-S-q> collapses to <C-q> and the quit mapping is never
+# reached. On a terminal with no CSI-u the config binds insert-mode <C-q> to the
+# same prompt, so THAT is the spelling to send -- and it is not a different key
+# to the viewer, because a real Ctrl+Shift+Q arrives as <C-q> there too. Empty
+# means no reachable quit chord, and callers skip rather than pretend.
+QUIT_SEND=""
+_resolve_quit_send() {
+  if [ "$KEYMODE" = system ]; then QUIT_SEND="CS-q"; return; fi
+  # maparg's string form is empty for a Lua-callback mapping, so ask for the
+  # dict and test that instead
+  if [ "$(nvx 'empty(maparg("<C-q>", "i", 0, 1)) ? "0" : "1"')" = "1" ]; then
+    QUIT_SEND="C-q"
+  else
+    QUIT_SEND=""
+  fi
+}
+
 # key <spec> -- press one key
 key() {
   local spec="$1"
+  # the quit chord is the one key whose wire spelling depends on the terminal
+  [ "$spec" = "CS-q" ] && [ -n "$QUIT_SEND" ] && spec="$QUIT_SEND"
   if [ "$KEYMODE" = system ]; then
     osascript -e "tell application \"System Events\" to $(_applescript_for "$spec")" >/dev/null 2>&1
   else
@@ -421,6 +445,7 @@ PY
   local i
   for i in $(seq 1 60); do [ -S "$SOCK" ] && break; sleep 0.15; done
   sleep 1.2
+  _resolve_quit_send
 }
 
 editor_alive() { nvim --server "$SOCK" --remote-expr 1 >/dev/null 2>&1; }
@@ -566,6 +591,15 @@ demo_repl() {
 }
 
 demo_quit() {
+  # No reachable quit chord means the chapter would narrate a prompt that never
+  # opens, and every key after it would land in the buffer instead -- a recording
+  # that contradicts its own captions. Say so and record nothing.
+  if [ -z "$QUIT_SEND" ]; then
+    echo "demo.sh: skipping the quit chapter -- no quit chord this key mode can send." >&2
+    echo "         (--keys socket cannot express CSI-u, and this config binds no" >&2
+    echo "          legacy fallback on this platform. See docs/wsl.md.)" >&2
+    return 0
+  fi
   step "CS-q" "Ctrl+Shift+Q -- quit, with a confirmation" 1.8
   key CS-q; pause 2.4
   step "" "Cancel is the default, so a mistyped chord never quits" 2.4
@@ -603,6 +637,7 @@ preflight() {
   for i in $(seq 1 60); do [ -S "$SOCK" ] && break; sleep 0.15; done
   sleep 1.2
   editor_alive || { echo "  FAIL  the editor did not start"; return 1; }
+  _resolve_quit_send
 
   ck() {                                   # ck <name> <got> <want>
     if [ "$2" = "$3" ]; then
@@ -638,15 +673,18 @@ preflight() {
   # state -- the chord itself is fine from a clean one, verified separately.
   # A preflight that cries wolf is worse than no preflight.
   #
-  # Socket mode CANNOT answer this one, so it does not ask. --remote-send feeds
-  # keys through the legacy encoding, where Shift is dropped from a control
-  # chord and <C-S-q> collapses to <C-q> -- the exact collapse that made CSI-u
-  # necessary in the first place. Measured: after --remote-send '<C-S-q>' the
-  # mode is still "i" and the line is untouched, and the 'c' meant to cancel a
-  # prompt is taken as <C-q>'s literal-insert instead, landing "cx = 1" in the
-  # buffer. Asked anyway, this reported a broken chord and advised recording
-  # with --keys socket -- which is the mode it was already in.
-  if [ "$KEYMODE" = system ]; then
+  # Over the socket, --remote-send feeds keys through the legacy encoding, where
+  # Shift is dropped from a control chord: <C-S-q> collapses to <C-q> and the
+  # mapping is never reached. Measured -- after --remote-send '<C-S-q>' the mode
+  # is still "i", the line is untouched, and the 'c' meant to cancel a prompt is
+  # taken as <C-q>'s literal-insert instead, landing "cx = 1" in the buffer.
+  #
+  # But <C-q> IS what a real Ctrl+Shift+Q arrives as on such a terminal, and the
+  # config binds it, so _resolve_quit_send hands us a spelling that works and
+  # this checks the real thing. QUIT_SEND empty means no reachable quit chord at
+  # all -- then, and only then, skip, because a check that cannot run must not
+  # report a pass. `key` does the substitution, so this presses CS-q either way.
+  if [ -n "$QUIT_SEND" ]; then
     nv '<C-\><C-n>'
     nv '<Cmd>call setline(1, "x = 1")<CR>'
     nv '<Cmd>call cursor(1,1)<CR>'
@@ -655,11 +693,11 @@ preflight() {
     local before; before="$(nvx 'getline(1)')"
     key CS-q; pause 1.1
     key c;    pause 0.8
-    ck "Ctrl+Shift+Q prompts (CSI-u)" "$(nvx 'getline(1)')" "$before"
+    ck "Ctrl+Shift+Q prompts ($QUIT_SEND)" "$(nvx 'getline(1)')" "$before"
     ck "...and Cancel came back alive" "$(editor_alive && echo yes || echo no)" "yes"
   else
     skips=$((skips + 1))
-    printf '  \033[33mskip\033[0m  %-34s --remote-send has no CSI-u to send\n' \
+    printf '  \033[33mskip\033[0m  %-34s no quit chord this mode can send\n' \
       "Ctrl+Shift+Q prompts"
   fi
 
