@@ -1,0 +1,60 @@
+KEYS.md
+  s_80c9f75328aff9::t_7e78e6c99552c4 253-258,261-263,266-268
+  s_80c9f75328aff9::t_500a2dae69acbf 269
+  s_80c9f75328aff9::t_3536d27c170c2e 169-176
+  s_80c9f75328aff9::t_998e0d77aeebe5 259-260
+install.sh
+  s_80c9f75328aff9::t_005f75d019745b 98-99
+  s_80c9f75328aff9::t_4f42cce456173e 46
+  s_80c9f75328aff9::t_ea6049d2b40349 59
+  s_80c9f75328aff9::t_b56e2ff11782fd 102
+tests/suite_projects.sh
+  s_80c9f75328aff9::t_5198e329afca7b 65-68,72,74
+  s_80c9f75328aff9::t_d42830f6b40212 184-186
+  s_80c9f75328aff9::t_5451c4954d06e6 1-64,69-71,73,75-183,187-235
+drill.sh
+  s_80c9f75328aff9::t_b0b1ebdafc03b2 66-68,70,76-82
+  s_80c9f75328aff9::t_e56836637bc29a 18-23,25-27,29,31-62
+  s_80c9f75328aff9::t_ebacecf3cfb723 85-97
+README.md
+  s_80c9f75328aff9::t_7e78e6c99552c4 43-44,70,139-142,151-153,337,412
+  s_80c9f75328aff9::t_ad0810fbd68743 143-144
+  s_80c9f75328aff9::t_fbe4f401cd6391 333
+  s_80c9f75328aff9::t_016a91e3104a1f 338
+  s_80c9f75328aff9::t_fe65be938404f8 406
+  s_80c9f75328aff9::t_02164228271a61 46,49-54
+  s_80c9f75328aff9::t_cb76da8658221e 155-162
+  s_80c9f75328aff9::t_b31a3734aba597 417
+TODO.md
+  s_80c9f75328aff9::t_e8569895e459d5 1-2
+  s_80c9f75328aff9::t_31f6605b798022 3-4
+tests/run.sh
+  s_80c9f75328aff9::t_1bc1254b8a84d6 60
+  s_80c9f75328aff9::t_5b65322242f150 61
+nvimrc.lua
+  s_80c9f75328aff9::t_f313722c933ceb 856-870
+  s_80c9f75328aff9::t_3cd8799212c0f7 939
+  s_80c9f75328aff9::t_9256ec673ee7d6 927
+tests/suite_preload.sh
+  s_80c9f75328aff9::t_81ff9a27a2f58b 1-134
+tests/preload_drive.py
+  s_80c9f75328aff9::t_0d51d20efedb8a 1-138
+preload.py
+  s_80c9f75328aff9::t_17bbd5814af1df 1-47
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.20",
+  "base_commit_sha": "e49a2a595cae8e20946a57c16f67d7c88f586ccd",
+  "prompts": {},
+  "sessions": {
+    "s_80c9f75328aff9": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "72e32ddf-738c-41c0-a3b3-768b9570b8b1",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jainal Gosaliya <jainal09gosalia@gmail.com>"
+    }
+  }
+}
