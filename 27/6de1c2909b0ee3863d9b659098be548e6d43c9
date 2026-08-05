@@ -1,0 +1,48 @@
+nvimrc.lua
+  s_80c9f75328aff9::t_f313722c933ceb 822-836
+  s_80c9f75328aff9::t_3cd8799212c0f7 905
+  s_80c9f75328aff9::t_9256ec673ee7d6 893
+tests/suite_preload.sh
+  s_80c9f75328aff9::t_81ff9a27a2f58b 1-134
+tests/preload_drive.py
+  s_80c9f75328aff9::t_0d51d20efedb8a 1-138
+TODO.md
+  s_80c9f75328aff9::t_31f6605b798022 3-4
+README.md
+  s_80c9f75328aff9::t_ad0810fbd68743 143-144
+  s_80c9f75328aff9::t_fbe4f401cd6391 332
+  s_80c9f75328aff9::t_016a91e3104a1f 337
+  s_80c9f75328aff9::t_fe65be938404f8 405
+  s_80c9f75328aff9::t_02164228271a61 46,49-54
+  s_80c9f75328aff9::t_0dcb936882145d 321
+  s_80c9f75328aff9::t_cb76da8658221e 155-162
+  s_80c9f75328aff9::t_b31a3734aba597 416
+tests/run.sh
+  s_80c9f75328aff9::t_5b65322242f150 61
+install.sh
+  s_80c9f75328aff9::t_ea6049d2b40349 59
+  s_80c9f75328aff9::t_b56e2ff11782fd 102
+drill.sh
+  s_80c9f75328aff9::t_ebacecf3cfb723 85-97
+preload.py
+  s_80c9f75328aff9::t_17bbd5814af1df 1-47
+KEYS.md
+  s_80c9f75328aff9::t_3536d27c170c2e 167-174
+  s_80c9f75328aff9::t_998e0d77aeebe5 257-258
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.20",
+  "base_commit_sha": "276de1c2909b0ee3863d9b659098be548e6d43c9",
+  "prompts": {},
+  "sessions": {
+    "s_80c9f75328aff9": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "72e32ddf-738c-41c0-a3b3-768b9570b8b1",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jainal Gosaliya <jainal09gosalia@gmail.com>"
+    }
+  }
+}
