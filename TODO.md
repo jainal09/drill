@@ -34,13 +34,13 @@ Landed as a stack of PRs, one per checkpoint, each based on the previous.
 
 - [x] **0 — `wsl/00-todo`** · this checklist, plus a baseline `./tests/run.sh`
       run on unmodified `main` so "no regression" has something to measure against
-- [ ] **1 — `wsl/01-install`** · `install.sh`: package-manager detect, prompted
+- [x] **1 — `wsl/01-install`** · `install.sh`: package-manager detect, prompted
       auto-install (`--yes`, non-interactive when stdin is not a tty), a nvim
       version parse that survives `-dev` strings, and correct nvim install hints
       per platform. (`drill.sh`'s only `apt install` line is for fzf, which has
       no version gate and is not stale — nothing to do there.)
       *Gate: `install.sh` into a temp `DRILL_HOME`.*
-- [ ] **2 — `wsl/02-clipboard`** · `nvimrc.lua`: native provider first, a
+- [x] **2 — `wsl/02-clipboard`** · `nvimrc.lua`: native provider first, a
       `clip.exe` + `powershell Get-Clipboard` shim only when no *usable*
       provider is found — "usable" being the load-bearing word, since an
       installed `xclip` with no display is discovered and still cannot copy
@@ -48,12 +48,18 @@ Landed as a stack of PRs, one per checkpoint, each based on the previous.
       and resolve `python3` past the `/mnt/.../WindowsApps` Store alias
       that WSL's PATH interop otherwise hands us.
       *Gate: `suite_config.sh` clipboard cases green; copy/paste both directions by hand.*
-- [ ] **3 — `wsl/03-timer`** · `drill.sh`: `run()` currently reports success for
-      a process that merely launched, so a missing sound file silences the bell
-      fallback too — check the exit code and add a timeout. Then extend the
+- [x] **3 — `wsl/03-timer`** · `drill.sh`: `run()` reported success for a
+      process that merely launched, so a player that exits non-zero silenced
+      the bell fallback too — check the exit code, add a timeout. Extend the
       sound chain (`paplay`/`pw-play`/`aplay`/PowerShell) and the notification
       chain (`notify-send`/PowerShell toast), and guard `pgrep`.
-      *Gate: `suite_timer.sh` green; `t 0.05` gives sound and a notification.*
+
+      Scope grew once the suite could run here: **`pgrep -f "$TAG"` matches any
+      process that merely *mentions* the tag**, so `t` was stopping strangers —
+      including the test shell that holds the tag in its own `-c` string, which
+      is why 30 of 36 timer cases failed on Linux before any of this. Confirm
+      each candidate is an interpreter with `ps -o comm=` instead.
+      *Gate: `suite_timer.sh` 36/36 (was 6/36); sound and notification both fire.*
 - [ ] **4 — `wsl/04-demo-tests`** · `demo.sh` `bc` → `awk`; `tests/bin/timeout`
       delegates to real GNU `timeout` when one exists instead of shadowing it;
       `tests/run.sh` says so loudly when no clipboard provider is on PATH.

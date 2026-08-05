@@ -107,7 +107,7 @@ ri() {
 
 # ---- timer ------------------------------------------------------------
 _DRILL_TIMER_PY=$(cat <<'PY'
-import shutil, subprocess, sys, time
+import os, shutil, subprocess, sys, time
 
 mins = float(sys.argv[1])
 end = time.monotonic() + mins * 60
@@ -118,13 +118,81 @@ except OSError:
 
 
 def run(cmd):
+    # Believe the EXIT CODE, not the launch. Measured on Ubuntu 22.04 under
+    # WSLg: pw-play is installed and exits 1 ("no node available"), and
+    # notify-send is installed and exits 1 (WSLg ships no notification daemon,
+    # so nothing answers on the session bus). Treating either as success is
+    # what made the bell below unreachable -- no sound AND no bell, which is
+    # the one outcome a timer must never have. shutil.which is still the first
+    # gate because it is free; it just is not proof of anything.
     if not shutil.which(cmd[0]):
         return False
     try:
-        subprocess.run(cmd, capture_output=True)
-        return True
-    except OSError:
+        # a notify-send waiting on a dead bus would otherwise hang this
+        # process for the rest of the session
+        return subprocess.run(cmd, capture_output=True, timeout=10).returncode == 0
+    except (OSError, subprocess.TimeoutExpired):
         return False
+
+
+def first_file(paths):
+    for p in paths:
+        if os.path.exists(p):
+            return p
+    return None
+
+
+# A player exiting non-zero on a file that is not there looks exactly like no
+# player at all, and both send us to the bell -- so pick a file that exists
+# first. sound-theme-freedesktop is not installed on minimal images, which is
+# why this is a list and not the one path it used to be.
+def play():
+    if run(["afplay", "/System/Library/Sounds/Glass.aiff"]):
+        return True
+    # complete.oga stays first, as it always was: it is a short chime, roughly
+    # the length of the Glass.aiff the mac leg plays, and this runs three times.
+    # alarm-clock-elapsed.oga is an EIGHT-SECOND looping alarm -- measured -- so
+    # it is a last resort, not a nicer-sounding upgrade.
+    snd = first_file(["/usr/share/sounds/freedesktop/stereo/complete.oga",
+                      "/usr/share/sounds/freedesktop/stereo/bell.oga",
+                      "/usr/share/sounds/freedesktop/stereo/alarm-clock-elapsed.oga"])
+    if snd:
+        for player in ("paplay", "pw-play", "aplay"):
+            if run([player, snd]):
+                return True
+    # WSL with no working Linux audio: Windows has both a player and its own
+    # sounds, and interop is the one thing such a box still has.
+    return run(["powershell.exe", "-NoProfile", "-NoLogo", "-Command",
+                "(New-Object Media.SoundPlayer "
+                "'C:\\Windows\\Media\\Alarm01.wav').PlaySync()"])
+
+
+# ToastText02 built as raw XML: the templated DOM walk raises "Collection was
+# modified" under Windows PowerShell 5.1. The AppId is PowerShell's own -- a
+# toast from an unregistered AppId is silently dropped.
+_TOAST = (
+    "[void][Windows.UI.Notifications.ToastNotificationManager,"
+    "Windows.UI.Notifications,ContentType=WindowsRuntime];"
+    "$d=[Windows.Data.Xml.Dom.XmlDocument,Windows.Data.Xml.Dom,"
+    "ContentType=WindowsRuntime]::new();"
+    "$d.LoadXml('<toast><visual><binding template=\"ToastText02\">"
+    "<text id=\"1\">drill</text><text id=\"2\">%s</text>"
+    "</binding></visual></toast>');"
+    "[Windows.UI.Notifications.ToastNotificationManager]::CreateToastNotifier("
+    "'{1AC14E77-02E7-4E5D-B744-2EB1AE5198B7}\\WindowsPowerShell\\v1.0"
+    "\\powershell.exe').Show("
+    "[Windows.UI.Notifications.ToastNotification]::new($d))"
+)
+
+
+def notify(msg):
+    # msg is always "<number> min done", so it needs no XML or PowerShell
+    # quoting -- there is nothing in it to escape.
+    return (run(["osascript", "-e",
+                 'display notification "%s" with title "drill"' % msg])
+            or run(["notify-send", "drill", msg])
+            or run(["powershell.exe", "-NoProfile", "-NoLogo",
+                    "-Command", _TOAST % msg]))
 
 
 while True:
@@ -139,13 +207,10 @@ while True:
 tty.write("\033]0;TIME UP\007\a\n*** TIME UP -- %g min ***\n" % mins)
 tty.flush()
 
-msg = "%g min done" % mins
-(run(["osascript", "-e", 'display notification "%s" with title "drill"' % msg])
- or run(["notify-send", "drill", msg]))
+notify("%g min done" % mins)
 
 for _ in range(3):
-    if not (run(["afplay", "/System/Library/Sounds/Glass.aiff"])
-            or run(["paplay", "/usr/share/sounds/freedesktop/stereo/complete.oga"])):
+    if not play():
         tty.write("\a")      # no sound player: the terminal bell is the fallback
         tty.flush()
         time.sleep(0.4)
@@ -165,10 +230,42 @@ _drill_timer_clear_title() { printf '\033]0;\007'; }
 # `for p in $pids` on purpose: zsh does not word-split unquoted expansions the
 # way bash does, so that form iterates ONCE with the whole newline-joined blob
 # in zsh and per-PID in bash. This behaves the same in both.
-_drill_timer_pids() { pgrep -f "$DRILL_TIMER_TAG" 2>/dev/null; }
+#
+# `pgrep -f` alone is not the question we mean. It matches the tag ANYWHERE in
+# a command line, so it also matches any process that merely mentions it -- a
+# shell started as `sh -c '... DRILL_TIMER_TAG=drill-timer ... '`, an editor
+# opened on a file with that name, a grep for it. `t` then stops that stranger,
+# because stopping "the running timer" is the first thing it does. Measured on
+# Linux: a shell holding the tag in its argv was found and killed by its own
+# call to `t`, exit 143.
+#
+# So confirm each candidate is an interpreter before believing it. The timer is
+# always `python3 -c <script> <mins> <tag>`, and `ps -o comm=` is the process's
+# executable, not its arguments -- so it cannot be fooled by a command line
+# that merely quotes the tag. POSIX, and identical on macOS.
+_drill_timer_pids() {
+  local p
+  pgrep -f "$DRILL_TIMER_TAG" 2>/dev/null | while IFS= read -r p; do
+    [ -n "$p" ] || continue
+    case "$(ps -p "$p" -o comm= 2>/dev/null)" in
+      python*|*/python*) printf '%s\n' "$p" ;;
+    esac
+  done
+}
+
+# Without pgrep every lookup comes back empty, which reads as "no timer is
+# running" -- so `t -k` would report success at doing nothing while the
+# countdown kept repainting your title. Say the true thing instead.
+_drill_timer_have_pgrep() {
+  command -v pgrep >/dev/null 2>&1 && return 0
+  echo "timer: pgrep not found, so a running timer cannot be found either" >&2
+  echo "       (install procps / procps-ng)" >&2
+  return 1
+}
 
 _drill_timer_stop() {
   local want="$1" pids p found="" killed=0
+  _drill_timer_have_pgrep || return 1
   pids="$(_drill_timer_pids)"
   if [ -z "$pids" ]; then
     echo "timer: none running"
@@ -226,7 +323,8 @@ _drill_timer_cmd() {
   case "${1:-}" in
     "")             _drill_timer "$mins" ;;
     -k|--kill|stop) shift; _drill_timer_stop "${1:-}" ;;
-    -l|--list)      local p; p="$(_drill_timer_pids)"
+    -l|--list)      local p; _drill_timer_have_pgrep || return 1
+                    p="$(_drill_timer_pids)"
                     [ -n "$p" ] && printf 'timer: running, id %s\n' \
                       "$(printf '%s' "$p" | tr '\n' ' ')" || echo "timer: none running" ;;
     -h|--help)      echo "usage: t | t10        start a 25- / 10-minute timer"
