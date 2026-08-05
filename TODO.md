@@ -37,7 +37,8 @@ Landed as a stack of PRs, one per checkpoint, each based on the previous.
 - [ ] **1 — `wsl/01-install`** · `install.sh`: package-manager detect, prompted
       auto-install (`--yes`, non-interactive when stdin is not a tty), a nvim
       version parse that survives `-dev` strings, and correct nvim install hints
-      per platform. Same stale `apt install` hint in `drill.sh` too.
+      per platform. (`drill.sh`'s only `apt install` line is for fzf, which has
+      no version gate and is not stale — nothing to do there.)
       *Gate: `install.sh` into a temp `DRILL_HOME`.*
 - [ ] **2 — `wsl/02-clipboard`** · `nvimrc.lua`: native provider first, a
       `clip.exe` + `powershell Get-Clipboard` shim only when no *usable*
