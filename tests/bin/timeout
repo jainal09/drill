@@ -1,4 +1,37 @@
 #!/bin/sh
 # Minimal GNU-timeout stand-in for macOS (no coreutils here).
 # usage: timeout <seconds> <cmd> [args...]
+#
+# run_test.sh and every suite put this directory FIRST on PATH, which is what
+# makes the mandated `timeout 20 nvim ...` shape work verbatim on a Mac. On
+# Linux a real timeout(1) already exists -- and being first on PATH means this
+# file SHADOWS it, handing the tests the weaker shim instead: no -k, no
+# process-group kill, and SIGALRM (rc 142) where GNU sends SIGTERM (rc 124).
+#
+# So look for the real one first and hand over to it. The perl alarm at the
+# bottom is the fallback for when there genuinely is no timeout on the system,
+# which is the macOS case this file was written for and where it still behaves
+# exactly as it always did.
+#
+# No dirname, no cd, no pwd: this runs FIRST on PATH, sometimes on a PATH
+# trimmed down to almost nothing, and a $0 we failed to resolve would make the
+# loop below re-exec this same file forever. ${0%/*} is parameter expansion, so
+# it cannot be missing -- and DRILL_TIMEOUT_SHIM is the belt to that braces: on
+# a second entry we go straight to perl instead of looping. It stays set for
+# whatever we exec, so a timeout nested inside a timeout gets the perl shim.
+# Nothing in the suite nests them.
+if [ -z "${DRILL_TIMEOUT_SHIM:-}" ]; then
+  DRILL_TIMEOUT_SHIM=1
+  export DRILL_TIMEOUT_SHIM
+  self_dir=${0%/*}
+  [ "$self_dir" = "$0" ] && self_dir=.
+  IFS=:
+  for d in $PATH; do
+    [ -n "$d" ] || d=.
+    [ "$d" = "$self_dir" ] && continue
+    [ -x "$d/timeout" ] && exec "$d/timeout" "$@"
+  done
+  unset IFS
+fi
+
 exec perl -e 'my $s=shift; alarm $s; exec @ARGV or die "exec: $!\n";' "$@"

@@ -165,6 +165,17 @@ _applescript_for() {
 nv()  { nvim --server "$SOCK" --remote-send "$1" </dev/null >/dev/null 2>&1; }
 nvx() { nvim --server "$SOCK" --remote-expr "$1" </dev/null 2>/dev/null; }
 
+# secs <factor> -- <factor> * $SPEED, as a number `sleep` will take.
+#
+# This was `bc`, which is NOT installed by default on Debian or Ubuntu, and so
+# not on most WSL images. It is called once per keystroke, once per caption and
+# once per pause, and the failure is silent: there is no `set -e` here, so a
+# missing bc makes every `$( )` empty, every `sleep ""` an error, and the demo
+# races through at full speed printing "sleep: missing operand" instead of
+# recording anything. awk ships with both macOS and every Linux, and returns
+# the same numbers.
+secs() { awk -v f="$1" -v s="$SPEED" 'BEGIN { printf "%.4f", f * s }'; }
+
 # key <spec> -- press one key
 key() {
   local spec="$1"
@@ -173,7 +184,7 @@ key() {
   else
     nv "$(_nvim_notation "$spec")"
   fi
-  sleep "$(bc -l <<< "0.09 * $SPEED")"
+  sleep "$(secs 0.09)"
 }
 
 # Escape for an AppleScript double-quoted literal. Written out by hand because
@@ -184,7 +195,7 @@ _as_quote() { printf '%s' "$1" | sed -e 's/\\/\\\\/g' -e 's/"/\\"/g'; }
 
 # type <text> -- type it a character at a time, like a person
 type_text() {
-  local text="$1" per; per="$(bc -l <<< "0.045 * $SPEED")"
+  local text="$1" per; per="$(secs 0.045)"
   if [ "$KEYMODE" = system ]; then
     # one osascript for the whole string: spawning a process per character
     # makes even short lines take seconds
@@ -210,7 +221,7 @@ APPLESCRIPT
   fi
 }
 
-pause() { sleep "$(bc -l <<< "$1 * $SPEED")"; }
+pause() { sleep "$(secs "$1")"; }
 
 # wait_for <text> -- block until <text> shows up in the current buffer's tail.
 # NOT a longer sleep: every pause here is multiplied by --speed, so a fixed wait
@@ -326,7 +337,7 @@ FAKE_PROMPT=$'\033[1;32m~\033[0m $ '
 shell_line() {                       # type a command at a fake prompt, then run it
   printf '%b' "$FAKE_PROMPT"
   local i
-  for (( i=0; i<${#1}; i++ )); do printf '%s' "${1:$i:1}"; sleep "$(bc -l <<< "0.04 * $SPEED")"; done
+  for (( i=0; i<${#1}; i++ )); do printf '%s' "${1:$i:1}"; sleep "$(secs 0.04)"; done
   printf '\n'
   pause 0.4
 }
@@ -576,7 +587,7 @@ demo_quit() {
 # line, press the chord, and see whether the buffer changed the way that chord
 # should change it, and only that way.
 preflight() {
-  local fails=0
+  local fails=0 skips=0
   printf 'demo.sh --check : keys via %s\n\n' "$KEYMODE"
   printf 'x = 1\n' > "$FILE"
   rm -f "$SOCK"
@@ -626,22 +637,39 @@ preflight() {
   # Select mode and undoing, and this check reported a false failure from that
   # state -- the chord itself is fine from a clean one, verified separately.
   # A preflight that cries wolf is worse than no preflight.
-  nv '<C-\><C-n>'
-  nv '<Cmd>call setline(1, "x = 1")<CR>'
-  nv '<Cmd>call cursor(1,1)<CR>'
-  nv '<Cmd>startinsert<CR>'
-  pause 0.5
-  local before; before="$(nvx 'getline(1)')"
-  key CS-q; pause 1.1
-  key c;    pause 0.8
-  ck "Ctrl+Shift+Q prompts (CSI-u)" "$(nvx 'getline(1)')" "$before"
-  ck "...and Cancel came back alive" "$(editor_alive && echo yes || echo no)" "yes"
+  #
+  # Socket mode CANNOT answer this one, so it does not ask. --remote-send feeds
+  # keys through the legacy encoding, where Shift is dropped from a control
+  # chord and <C-S-q> collapses to <C-q> -- the exact collapse that made CSI-u
+  # necessary in the first place. Measured: after --remote-send '<C-S-q>' the
+  # mode is still "i" and the line is untouched, and the 'c' meant to cancel a
+  # prompt is taken as <C-q>'s literal-insert instead, landing "cx = 1" in the
+  # buffer. Asked anyway, this reported a broken chord and advised recording
+  # with --keys socket -- which is the mode it was already in.
+  if [ "$KEYMODE" = system ]; then
+    nv '<C-\><C-n>'
+    nv '<Cmd>call setline(1, "x = 1")<CR>'
+    nv '<Cmd>call cursor(1,1)<CR>'
+    nv '<Cmd>startinsert<CR>'
+    pause 0.5
+    local before; before="$(nvx 'getline(1)')"
+    key CS-q; pause 1.1
+    key c;    pause 0.8
+    ck "Ctrl+Shift+Q prompts (CSI-u)" "$(nvx 'getline(1)')" "$before"
+    ck "...and Cancel came back alive" "$(editor_alive && echo yes || echo no)" "yes"
+  else
+    skips=$((skips + 1))
+    printf '  \033[33mskip\033[0m  %-34s --remote-send has no CSI-u to send\n' \
+      "Ctrl+Shift+Q prompts"
+  fi
 
   nv '<Cmd>qa!<CR>'
   wait "$NVIM_PID" 2>/dev/null
   printf '\n'
   if [ "$fails" -eq 0 ]; then
-    printf '  all chords arrive intact -- safe to record.\n\n'
+    printf '  all chords arrive intact -- safe to record.\n'
+    [ "$skips" -gt 0 ] && printf '  (%d not checkable in this key mode, see above)\n' "$skips"
+    printf '\n'
     return 0
   fi
   printf '  %d chord(s) did not survive. Record with --keys socket instead:\n' "$fails"
