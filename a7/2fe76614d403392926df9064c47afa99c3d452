@@ -1,0 +1,26 @@
+tests/suite_preload.sh
+  s_80c9f75328aff9::t_ff1dad40b4f642 105-122
+  s_80c9f75328aff9::t_d4334d57a9dd36 127-129,131-132
+  s_80c9f75328aff9::t_d5e1579d7cbe57 49-52
+  s_80c9f75328aff9::t_cb285db770eecf 143-144,146-154
+README.md
+  s_80c9f75328aff9::t_2757548b420b95 322,338
+preload.py
+  s_80c9f75328aff9::t_e1c0138c21ba86 8-12,14-18,34-35,37-38,40-58,61,66-74
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "a72fe76614d403392926df9064c47afa99c3d452",
+  "prompts": {},
+  "sessions": {
+    "s_80c9f75328aff9": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "72e32ddf-738c-41c0-a3b3-768b9570b8b1",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jainal Gosaliya <jainal09gosalia@gmail.com>"
+    }
+  }
+}
