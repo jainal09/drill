@@ -56,7 +56,7 @@ fi
 # ---- files ------------------------------------------------------------
 mkdir -p "$DRILL_HOME/templates" "$DRILL_HOME/solves" "$DRILL_HOME/scratch"
 
-for f in nvimrc.lua drill.sh KEYS.md; do
+for f in nvimrc.lua drill.sh preload.py KEYS.md; do
   [ -f "$SRC/$f" ] || bail "missing $f next to install.sh"
   if [ -f "$DRILL_HOME/$f" ] && ! cmp -s "$SRC/$f" "$DRILL_HOME/$f"; then
     cp "$DRILL_HOME/$f" "$DRILL_HOME/$f.bak"
@@ -99,7 +99,7 @@ cat <<EOF
   d  search     fuzzy-pick a file with fzf ('dt search' / 'ds search' likewise)
   dt <name>     edit $DRILL_HOME/templates/<name>.py    bare 'dt' -> dir listing
   ds <name>     edit $DRILL_HOME/solves/<name>.py       bare 'ds' -> dir listing
-  r  <file>     python3 <file>
+  r  <file>     python3 <file>, Counter/deque/heappush... pre-imported
   ri <file>     python3 -i <file>   -> REPL with the file's names live
   t  / t10      25- / 10-minute timer, counts down in the window title
 

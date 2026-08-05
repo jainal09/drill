@@ -166,6 +166,14 @@ started? `Ctrl+E` restarts python with the new code. Didn't touch it? Same
 session, so whatever you were poking at in the REPL is still there. There is no
 reload key because there is nothing to reload.
 
+**The toolkit is already imported.** Every run — `Ctrl+R`, `Ctrl+E`, `r`, `ri`
+— goes through `preload.py`, so `Counter`, `deque`, `defaultdict`, `heappush`,
+`permutations`, `lru_cache`, `bisect_left`, `inf` and friends are live with no
+import line in the file, the way the LeetCode judge has them. Your own names
+win over the toolkit's, a traceback still points at your line, and `sys.argv`
+and `__name__ == "__main__"` behave exactly as plain `python3`. Delete
+`~/drill/preload.py` and every run is plain `python3` again.
+
 **The run split gets out of your way.** `Ctrl+R` drops you *in* the output, so
 any key dismisses it and you carry on — and if you go back to the file first
 instead, it closes itself the moment you leave it. What it will not do is close
@@ -248,8 +256,8 @@ d <dir> <name>    nested: scratch/<dir>/<name>.py, folders created as needed
 d search [query]  fuzzy-pick a file with fzf; Esc picks nothing
 dt <name>         edit ~/drill/templates/<name>.py    bare = dir listing
 ds <name>         edit ~/drill/solves/<name>.py       bare = dir listing
-r <file>          python3 <file>   (nested paths and bare nested names resolve)
-ri <file>         python3 -i <file>   (REPL with the file's names live)
+r <file>          python3 <file>, toolkit pre-imported (nested names resolve)
+ri <file>         python3 -i <file>   (REPL: the file's names + toolkit live)
 t / t10           25- / 10-minute timer, counts down in the window title
 t -k [id]         stop it (id optional -- there is only ever one)
 t -l              is one running?

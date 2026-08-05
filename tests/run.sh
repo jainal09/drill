@@ -58,6 +58,7 @@ run "run-window lifecycle"          suite_runwin.sh
 run "directory listing"             suite_netrw.sh
 run "shell: timer"                  suite_timer.sh
 run "shell: projects + search"      suite_projects.sh
+run "preload: the LeetCode desk"    suite_preload.sh
 
 # Ctrl+/ has no legacy control byte, so a terminal sends it EITHER as 0x1F
 # (<C-_>) or, with the kitty/CSI-u protocol negotiated, as ESC[47;5u (<C-/>).

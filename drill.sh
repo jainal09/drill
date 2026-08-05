@@ -91,8 +91,19 @@ _drill_find() {
   esac
   printf '%s\n' "$n"
 }
-r()  { python3    "$(_drill_find "$1")" "${@:2}"; }
-ri() { python3 -i "$(_drill_find "$1")"; }
+# Both run through the preload shim when it is installed: the file you typed
+# stays import-free, but Counter, deque, heappush and friends are already
+# there. Without the shim (an install that predates it) they are plain python3.
+r() {
+  local f; f="$(_drill_find "$1")"
+  if [ -f "$DRILL/preload.py" ]; then python3 "$DRILL/preload.py" "$f" "${@:2}"
+  else python3 "$f" "${@:2}"; fi
+}
+ri() {
+  local f; f="$(_drill_find "$1")"
+  if [ -f "$DRILL/preload.py" ]; then python3 -i "$DRILL/preload.py" "$f"
+  else python3 -i "$f"; fi
+}
 
 # ---- timer ------------------------------------------------------------
 _DRILL_TIMER_PY=$(cat <<'PY'
