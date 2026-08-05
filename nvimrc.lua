@@ -32,6 +32,55 @@ vim.opt.mouse = "a"                    -- click + select + scroll
 vim.opt.virtualedit = "all"
 vim.opt.clipboard = "unnamedplus"      -- system clipboard (macOS: pbcopy/pbpaste)
 
+-- ...and on WSL, something to point it AT. Nvim finds a provider by itself
+-- nearly everywhere -- pbcopy/pbpaste on macOS, wl-copy/xclip/xsel/win32yank on
+-- Linux, and WSLg hands you wl-copy and xclip already wired to the Windows
+-- clipboard, so on a normal WSL box this block does nothing at all. It exists
+-- for the one that has no WSLg, no X and no win32yank, where the probe comes up
+-- EMPTY and `unnamedplus` does not fail loudly: Ctrl+C copies nothing, Ctrl+V
+-- pastes nothing, and Ctrl+V over a SELECTION deletes it and puts nothing back.
+-- On top of that "clipboard: No provider" is a hit-enter prompt, in an editor
+-- whose whole premise is that you never stop typing. clip.exe and
+-- powershell.exe are the one pair still there when interop is on but no
+-- display is.
+do
+  local function have(cmd) return vim.fn.executable(cmd) == 1 end
+
+  local provider = false
+  for _, c in ipairs({ "pbcopy", "wl-copy", "xclip", "xsel",
+                       "win32yank.exe", "lemonade", "doitclient" }) do
+    if have(c) then provider = true break end
+  end
+
+  local wsl = vim.env.WSL_DISTRO_NAME ~= nil
+  if not wsl and vim.fn.filereadable("/proc/version") == 1 then
+    local first = vim.fn.readfile("/proc/version", "", 1)[1] or ""
+    wsl = first:lower():find("microsoft") ~= nil
+  end
+
+  if not provider and wsl and have("clip.exe") and have("powershell.exe") then
+    -- paste is a Lua function rather than a command because Get-Clipboard
+    -- returns CRLF, and nvim splits on \n only -- every pasted line would keep
+    -- a literal \r on the end. Nothing built in strips it.
+    local function from_windows()
+      local out = vim.fn.systemlist({ "powershell.exe", "-NoProfile", "-NoLogo",
+                                      "-Command", "Get-Clipboard" })
+      if vim.v.shell_error ~= 0 then return {} end
+      for i, line in ipairs(out) do out[i] = (line:gsub("\r$", "")) end
+      return out
+    end
+    vim.g.clipboard = {
+      name = "wsl-interop",
+      copy  = { ["+"] = "clip.exe",   ["*"] = "clip.exe" },
+      paste = { ["+"] = from_windows, ["*"] = from_windows },
+      -- every paste really asks Windows. The round trip costs ~0.4s, which is
+      -- the price of this path existing at all -- but a cache that answers with
+      -- what YOU last copied would silently ignore anything copied in a browser.
+      cache_enabled = 0,
+    }
+  end
+end
+
 -- One cursor everywhere you type. Nvim's default is a vertical bar in insert
 -- (i-ci-ve:ver25) but a BLOCK in terminal mode, so the caret changed shape every
 -- time <C-e> moved you between the file and the interpreter -- in an editor whose
@@ -860,8 +909,27 @@ local RUN_H = 15
 -- the config deliberately knows nothing about DRILL_HOME; absent (an install
 -- that predates the shim), runs are plain python3, exactly as before.
 local preload = vim.fn.fnamemodify(debug.getinfo(1, "S").source:sub(2), ":p:h") .. "/preload.py"
+
+-- Which python3, spelled out only when the bare name would be the WRONG one.
+-- WSL appends the Windows PATH, so on a box with no Linux python installed
+-- `python3` resolves to the Store App Execution Alias under
+-- /mnt/c/.../WindowsApps -- a zero-byte stub that opens the Microsoft Store
+-- instead of running your file. It would do that inside a 15-row split, which
+-- makes both Ctrl+R and Ctrl+E look broken for a reason nothing on screen
+-- explains. Anything under /mnt is a Windows binary, so keep walking PATH.
+-- Everywhere else this stays the literal string "python3", exactly as before.
+local python = "python3"
+if vim.fn.exepath("python3"):match("^/mnt/") then
+  for dir in (vim.env.PATH or ""):gmatch("[^:]+") do
+    if not dir:match("^/mnt/") and vim.fn.executable(dir .. "/python3") == 1 then
+      python = vim.fn.shellescape(dir .. "/python3")
+      break
+    end
+  end
+end
+
 local function py_cmd(flags, f)
-  local cmd = "python3" .. flags .. " "
+  local cmd = python .. flags .. " "
   if vim.fn.filereadable(preload) == 1 then
     cmd = cmd .. vim.fn.shellescape(preload) .. " "
   end
