@@ -1258,3 +1258,28 @@ local function quit_drill()
 end
 
 map({ "n", "i", "t" }, "<C-S-q>", quit_drill, S)
+
+-- ...and the same chord again, for terminals that cannot spell it.
+--
+-- Everything above assumes CSI-u. Windows Terminal 1.24 is new enough to speak
+-- it and does not negotiate it with nvim, so Ctrl+Shift+Q arrives as the plain
+-- legacy 0x11 -- <C-q> -- and the mapping above is simply never reached. The
+-- documented way out of the editor does not exist on WSL, which leaves `:qa!`:
+-- the one thing this whole section was written to stop being necessary.
+--
+-- So bind what actually ARRIVES. This is not a second, different key to learn:
+-- on such a terminal the user presses Ctrl+Shift+Q, exactly as documented, and
+-- <C-q> is what nvim is handed.
+--
+-- INSERT ONLY, and gated on WSL, because both halves cost something:
+--   * normal mode keeps Ctrl+Q as visual block (CONFLICT 2) -- it is the only
+--     way to ask for one, and drill's premise is that you are in insert anyway.
+--   * in insert, vanilla <C-q> is literal-insert, the twin of <C-v>. In a
+--     Python scratchpad where <C-v> is already paste, that is close to
+--     unreachable; a quit prompt that defaults to Cancel is the better use of
+--     the key. But it IS a real vim behaviour, so nowhere but WSL loses it.
+-- On macOS, and on any Linux terminal that does negotiate CSI-u, this whole
+-- block is skipped and nothing changes.
+if IS_WSL then
+  map("i", "<C-q>", quit_drill, S)
+end

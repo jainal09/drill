@@ -79,16 +79,19 @@ Landed as a stack of PRs, one per checkpoint, each based on the previous.
       `docs/testing.md`.
       *Gate: CI green on the PR itself.*
 
-### Still to be measured by a human
+### Measured by a human, and then fixed
 
-`Ctrl+Shift+Q` only exists when the terminal negotiates CSI-u. Windows Terminal
-≥1.22 does; older builds use win32-input-mode and the chord never fires, leaving
-`:qa!` as the only way out. Nothing automated can settle this: `suite_quit.sh`
-synthesises `ESC[113;6u` straight onto the pty, so it passes on a terminal where
-the chord could never arrive, and `demo.sh --check` cannot send CSI-u over
-`--remote-send` at all. **Press it in Windows Terminal.** If the confirmation
-appears, your build speaks CSI-u; if nothing happens, update Windows Terminal or
-use `:qa!`. Written up in [docs/wsl.md](docs/wsl.md).
+`Ctrl+Shift+Q` did not work on WSL. Nothing automated could have told us:
+`suite_quit.sh` writes `ESC[113;6u` straight onto the pty, so it passes on a
+terminal where the chord could never arrive, and `demo.sh --check` cannot send
+CSI-u over `--remote-send` at all. It took pressing the key.
+
+Windows Terminal 1.24 is new enough to speak CSI-u and does not negotiate it
+with nvim, so the chord arrives as the legacy `0x11` — plain `<C-q>` — and the
+`<C-S-q>` mapping is never reached. On WSL the config now also binds
+insert-mode `<C-q>`, which is what actually arrives: you press the documented
+chord and it works. Normal-mode `<C-q>` stays visual block, and off WSL nothing
+changes. Written up in [docs/wsl.md](docs/wsl.md).
 
 ### Not in scope, deliberately
 

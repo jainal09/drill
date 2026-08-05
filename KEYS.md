@@ -21,7 +21,7 @@ Syntax highlighting only. No completion, no LSP, no snippets, no AI.
 | `Tab` | indent the selected lines | **selection only** |
 | `Shift+Tab` | unindent the selected lines | **selection only** |
 | `Ctrl+Q` | visual block (was `Ctrl+V`) | normal, visual |
-| `Ctrl+Shift+Q` | **quit, with a confirmation** | normal, insert, **and inside the REPL** |
+| `Ctrl+Shift+Q` | **quit, with a confirmation** | normal, insert, **and inside the REPL** (on WSL it lands as `Ctrl+Q`, which is bound in insert to match — see below) |
 | **Shift+arrows** | **select, like any other editor** | normal, insert |
 | `Delete` / `Backspace` | delete the selection and keep typing | selection |
 | Arrows | movement | everywhere |
@@ -227,8 +227,15 @@ is live).
 It exists for the same reason `Ctrl+Shift+Z` does: in the legacy encoding Shift
 is dropped from a control chord, so `Ctrl+Q` and `Ctrl+Shift+Q` are the same
 byte. With CSI-u they are different keys — which is what lets this coexist with
-`Ctrl+Q` for visual block. **On a terminal that speaks no CSI-u it will not
-fire**; `:qa!` still works there.
+`Ctrl+Q` for visual block.
+
+**On a terminal that speaks no CSI-u the chord arrives as plain `Ctrl+Q`**, so
+on WSL — where Windows Terminal does not negotiate CSI-u — insert-mode `Ctrl+Q`
+is bound to the same prompt. You press the documented chord and it works; the
+side effect is that plain `Ctrl+Q` quits from insert too (Cancel is still the
+default) and stops being vanilla vim's literal-insert. Normal-mode `Ctrl+Q` is
+visual block everywhere, untouched, and none of this applies off WSL. See
+[docs/wsl.md](docs/wsl.md).
 
 | Command | Does |
 |---|---|
