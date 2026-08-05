@@ -242,15 +242,22 @@ title, which `pkill` on its own does not.
 ## Shell
 
 ```
-d <name>    edit ~/drill/scratch/<name>.py      bare = dir listing
-dt <name>   edit ~/drill/templates/<name>.py    bare = dir listing
-ds <name>   edit ~/drill/solves/<name>.py       bare = dir listing
-r <file>    python3 <file>
-ri <file>   python3 -i <file>   (REPL with the file's names live)
-t / t10     25- / 10-minute timer, counts down in the window title
-t -k [id]   stop it (id optional -- there is only ever one)
-t -l        is one running?
+d <name>          edit ~/drill/scratch/<name>.py      bare = dir listing
+d <dir> <name>    nested: scratch/<dir>/<name>.py, folders created as needed
+                  (same file as d <dir>/<name>; dt and ds nest too)
+d search [query]  fuzzy-pick a file with fzf; Esc picks nothing
+dt <name>         edit ~/drill/templates/<name>.py    bare = dir listing
+ds <name>         edit ~/drill/solves/<name>.py       bare = dir listing
+r <file>          python3 <file>   (nested paths and bare nested names resolve)
+ri <file>         python3 -i <file>   (REPL with the file's names live)
+t / t10           25- / 10-minute timer, counts down in the window title
+t -k [id]         stop it (id optional -- there is only ever one)
+t -l              is one running?
 ```
+
+`search` is a reserved word to `d`/`dt`/`ds`: a file literally named
+`search.py` is still reachable as `d ./search`, from the bare-`d` listing, or
+from the search itself.
 
 ## Conflicts, and how each is resolved
 
