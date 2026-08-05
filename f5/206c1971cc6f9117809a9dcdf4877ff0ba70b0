@@ -1,0 +1,37 @@
+nvimrc.lua
+  s_cad2a66ae164f0::t_0cea4868de440c 364,372-382
+tests/suite_search.sh
+  s_cad2a66ae164f0::t_86642433c4c0fe 224-245
+  s_cad2a66ae164f0::t_0ee29d11f3795d 223
+README.md
+  s_80c9f75328aff9::t_707804edc401cb 306
+  s_80c9f75328aff9::t_eab344033deed5 234-237,315
+tests/search_drive.py
+  s_cad2a66ae164f0::t_9ec073463f3e1f 1-144
+KEYS.md
+  s_80c9f75328aff9::t_110751f6dea47f 111-120
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.20",
+  "base_commit_sha": "f5206c1971cc6f9117809a9dcdf4877ff0ba70b0",
+  "prompts": {},
+  "sessions": {
+    "s_80c9f75328aff9": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "72e32ddf-738c-41c0-a3b3-768b9570b8b1",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jainal Gosaliya <jainal09gosalia@gmail.com>"
+    },
+    "s_cad2a66ae164f0": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "47beb2da-2237-4421-a73d-2b4261724c73",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jainal Gosaliya <jainal09gosalia@gmail.com>"
+    }
+  }
+}
