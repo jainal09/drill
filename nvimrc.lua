@@ -46,10 +46,25 @@ vim.opt.clipboard = "unnamedplus"      -- system clipboard (macOS: pbcopy/pbpast
 do
   local function have(cmd) return vim.fn.executable(cmd) == 1 end
 
+  -- Installed is not the same as usable, and this is the distinction the whole
+  -- block turns on. xclip and xsel talk to an X server; wl-copy talks to a
+  -- Wayland compositor. Installed with neither running -- a WSL box with no
+  -- WSLg, which is precisely the case this fallback exists for -- they are
+  -- found by executable() and then fail on every copy, so trusting the name
+  -- alone would skip the fallback and leave the clipboard as dead as if
+  -- nothing were installed at all. Require the display each one actually
+  -- needs. pbcopy, win32yank and the network ones need no display.
+  local function usable(cmd)
+    if not have(cmd) then return false end
+    if cmd == "wl-copy" then return vim.env.WAYLAND_DISPLAY ~= nil end
+    if cmd == "xclip" or cmd == "xsel" then return vim.env.DISPLAY ~= nil end
+    return true
+  end
+
   local provider = false
   for _, c in ipairs({ "pbcopy", "wl-copy", "xclip", "xsel",
                        "win32yank.exe", "lemonade", "doitclient" }) do
-    if have(c) then provider = true break end
+    if usable(c) then provider = true break end
   end
 
   local wsl = vim.env.WSL_DISTRO_NAME ~= nil
