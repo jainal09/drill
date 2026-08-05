@@ -289,15 +289,28 @@ fi
 
 # ---- files ------------------------------------------------------------
 mkdir -p "$DRILL_HOME/templates" "$DRILL_HOME/solves" "$DRILL_HOME/scratch"
+# resolve it the same way SRC is resolved, so the comparison below is between
+# two real paths and not between "~/drill" and "/home/you/drill"
+DRILL_HOME="$(cd "$DRILL_HOME" && pwd)"
 
-for f in nvimrc.lua drill.sh preload.py KEYS.md; do
-  [ -f "$SRC/$f" ] || bail "missing $f next to install.sh"
-  if [ -f "$DRILL_HOME/$f" ] && ! cmp -s "$SRC/$f" "$DRILL_HOME/$f"; then
-    cp "$DRILL_HOME/$f" "$DRILL_HOME/$f.bak"
-    say "kept your old $f as $f.bak"
-  fi
-  cp "$SRC/$f" "$DRILL_HOME/$f"
-done
+# The README's own instructions are `git clone ...` then `cd drill &&
+# ./install.sh`. Run from your home directory -- which is where people run it --
+# that puts the clone at ~/drill, and ~/drill IS the default DRILL_HOME. Source
+# and destination are then the same directory, and `cp a a` refuses ("are the
+# same file"), which under `set -e` kills the install on the documented path.
+# Installing into the clone is not a mistake; there is simply nothing to copy.
+if [ "$SRC" = "$DRILL_HOME" ]; then
+  say "running from $DRILL_HOME itself -- the files are already in place"
+else
+  for f in nvimrc.lua drill.sh preload.py KEYS.md; do
+    [ -f "$SRC/$f" ] || bail "missing $f next to install.sh"
+    if [ -f "$DRILL_HOME/$f" ] && ! cmp -s "$SRC/$f" "$DRILL_HOME/$f"; then
+      cp "$DRILL_HOME/$f" "$DRILL_HOME/$f.bak"
+      say "kept your old $f as $f.bak"
+    fi
+    cp "$SRC/$f" "$DRILL_HOME/$f"
+  done
+fi
 
 # yours to fill -- never clobbered
 [ -e "$DRILL_HOME/cheatsheet.py" ] || : > "$DRILL_HOME/cheatsheet.py"
