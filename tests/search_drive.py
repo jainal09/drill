@@ -123,6 +123,28 @@ def main():
         send("\x06", 0.9)
         send("\x1b", 1.2)
         ok("cancelled_search_returns_to_typing", q("mode(1)") == "i", q("mode(1)"))
+
+        # ... at EXACTLY the column you left. The mapping's <Esc> shifts the
+        # caret one left before the prompt opens, so without the stashed
+        # restore the round trip typed inside the previous word -- and the
+        # cases above cannot see that, because they all type at column 1.
+        send("\x1b", 0.4)
+        send("o", 0.5)                                     # fresh line, insert
+        send("hello ", 0.5)                                # caret at EOL
+        send("\x06", 0.9)
+        send("\x1b", 1.2)
+        send("X", 0.7)
+        ok("esc_back_exact_at_eol", q('getline(".")') == "hello X",
+           repr(q('getline(".")')))
+        send("\x1b", 0.4)
+        send("o", 0.5)
+        send("helloworld", 0.5)
+        send("\x1b[D" * 5, 0.8)                            # 5 x left arrow
+        send("\x06", 0.9)
+        send("\x1b", 1.2)
+        send("X", 0.7)
+        ok("esc_back_exact_midline", q('getline(".")') == "helloXworld",
+           repr(q('getline(".")')))
     finally:
         subprocess.run(["nvim", "--server", SOCK, "--remote-send", "<C-\\><C-n>:qa!<CR>"],
                        capture_output=True, stdin=subprocess.DEVNULL)

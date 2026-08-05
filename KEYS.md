@@ -103,7 +103,9 @@ auto-save off, delete the two `nvim_create_autocmd` blocks under
 **Find** (`Ctrl+F`) lights up every match and drops you on the first one, in
 Normal mode, so **`n`** walks forward and **`N`** walks back, with the highlight
 still on. The right-hand end of the status line says so while it is true:
-*press Enter to search* while you are typing the pattern, then
+*press Enter to search   Esc back to typing* while you are typing the pattern
+(in the directory listing, where Esc has nowhere to type, just the first
+half), then
 *n next   N previous   Esc back to search* once it has run — right above the
 prompt, where you are already looking. It borrows the end of the ruler for as
 long as it is up.

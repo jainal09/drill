@@ -228,8 +228,18 @@ echo "=== on a real pty: the Esc chain, which headless cannot see ==="
 if command -v python3 >/dev/null; then
   DRILL_SOCK="${TMPDIR:-/tmp}/drill-search-$$.sock"
   export DRILL_CONFIG="$CONFIG" DRILL_SOCK
-  PTY_OUT="$(timeout 180 python3 "$DIR/search_drive.py" 2>/dev/null)"
+  PTY_OUT="$(timeout 180 python3 "$DIR/search_drive.py")"
+  RC=$?
   rm -f "$DRILL_SOCK"
+  # a dead driver must be a loud failure, not a quiet skip: it prints its
+  # results once, at the very end, so a crash, hang or timeout means EMPTY
+  # output and zero cases counted -- the suite would pass with the Esc chain
+  # unguarded. Same guard as suite_quit.sh / suite_runwin.sh.
+  if [ $RC -ne 0 ] || [ -z "$PTY_OUT" ]; then
+    echo "suite_search.sh: pty driver failed (rc=$RC)" >&2
+    [ -n "$PTY_OUT" ] && echo "$PTY_OUT" >&2
+    exit 2
+  fi
   while IFS=$'\t' read -r verdict name got; do
     case "$verdict" in PASS|FAIL) ;; *) continue ;; esac
     if [ -n "$FILTER" ] && [[ "$name" != *"$FILTER"* ]]; then continue; fi
@@ -240,7 +250,8 @@ if command -v python3 >/dev/null; then
     fi
   done <<< "$PTY_OUT"
 else
-  echo "  (skipped: python3 not on PATH)"
+  echo "suite_search.sh: python3 not on PATH -- the pty cases cannot run" >&2
+  exit 2
 fi
 
 echo
