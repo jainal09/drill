@@ -105,7 +105,8 @@ Non-blocking, with a sound and a desktop notification at zero.
   (*n next · N previous · Esc back*), and the highlight clears itself the
   moment you type again.
 - **Clicks that just work** — trackpad wobble doesn't turn clicks into
-  selections; Option+click and Ctrl+click are plain clicks, not vim surprises.
+  selections; Option+click (Alt on Linux/WSL) and Ctrl+click are plain clicks,
+  not vim surprises.
 - **Folders when you want them** — `d graphs/bfs` nests freely,
   `d search` fuzzy-finds anything with fzf.
 - **Run from anywhere** — `r day1` / `ri day1` find your file by name across
@@ -131,9 +132,14 @@ Non-blocking, with a sound and a desktop notification at zero.
 at the end of your shell rc (backed up first). `./install.sh --uninstall`
 removes it. `DRILL_HOME=~/practice ./install.sh` puts it elsewhere.
 
-Requires Neovim 0.9+, Python 3 and fzf. macOS and Linux, bash and zsh. Your
-practice files (`scratch/`, `solves/`, `templates/`, `cheatsheet.py`, `log.md`)
-are gitignored, so `git pull` stays clean forever.
+Requires Neovim 0.9+, Python 3, fzf, and a clipboard provider — `pbcopy` is
+already there on macOS, and on Linux and WSL that means `wl-clipboard` or
+`xclip`. macOS, Linux and WSL; bash and zsh. `install.sh` checks for all of it,
+prints the exact install command for your package manager, and asks before
+running it. On WSL, read [docs/wsl.md](docs/wsl.md) — a few things there are
+installed and still do not work, and it says which. Your practice files
+(`scratch/`, `solves/`, `templates/`, `cheatsheet.py`, `log.md`) are gitignored,
+so `git pull` stays clean forever.
 
 ## Going deeper
 
@@ -144,6 +150,7 @@ are gitignored, so `git pull` stays clean forever.
 | [docs/verify.md](docs/verify.md) | prove nothing is helping you, and that your own nvim is untouched |
 | [docs/testing.md](docs/testing.md) | the 556-case gate that drives the real config with real keycodes |
 | [docs/recording.md](docs/recording.md) | `demo.sh` — the self-driving tour that recorded the video above |
+| [docs/wsl.md](docs/wsl.md) | WSL: the clipboard, the timer's sound and notification, and the one thing you have to check by hand |
 
 ## License
 

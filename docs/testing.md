@@ -57,10 +57,18 @@ cases assert against the painted screen.
 
 ## What the gate needs
 
-The gate needs three things the editor itself does not: `python3` for the pty
-suites, `zsh` because the timer suite runs `drill.sh` under both shells, and
-`perl` — macOS ships no GNU `timeout`, so `tests/bin/timeout` is a three-line
-`alarm` shim that `run.sh` puts on `PATH`.
+The gate needs four things the editor itself does not: `python3` for the pty
+suites, `zsh` because the timer suite runs `drill.sh` under both shells, a
+**clipboard provider** because several cases assert the real `+` register (with
+none, they fail for a reason that has nothing to do with the mapping they are
+named after — `run.sh` warns up front rather than letting that look like a
+regression), and `perl` *only where there is no `timeout(1)` at all*, i.e.
+macOS. `tests/bin/timeout` is that `alarm` shim; `run.sh` puts it on `PATH`
+first, so on Linux it hands over to the real `timeout` rather than shadowing it
+with something weaker.
+
+CI runs the same script on `ubuntu-latest` under `xvfb` with `xclip`, so the
+clipboard cases are real there too — see `.github/workflows/tests.yml`.
 
 ## Diagnostics
 
