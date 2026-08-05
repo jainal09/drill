@@ -243,9 +243,17 @@ _drill_timer_clear_title() { printf '\033]0;\007'; }
 # always `python3 -c <script> <mins> <tag>`, and `ps -o comm=` is the process's
 # executable, not its arguments -- so it cannot be fooled by a command line
 # that merely quotes the tag. POSIX, and identical on macOS.
+#
+# Two conditions, because neither alone is enough. `python3 train.py --tag
+# drill-timer` is a python process that mentions the tag, and the comm check
+# alone would hand it to `kill`. So also require the tag to be the LAST
+# argument -- which is not a trick, it is the invariant this file already
+# relies on and documents above: the tag is appended after the minutes for
+# exactly this purpose. pgrep matches against the whole command line, so `$`
+# anchors there without ps truncating anything.
 _drill_timer_pids() {
   local p
-  pgrep -f "$DRILL_TIMER_TAG" 2>/dev/null | while IFS= read -r p; do
+  pgrep -f "$DRILL_TIMER_TAG\$" 2>/dev/null | while IFS= read -r p; do
     [ -n "$p" ] || continue
     case "$(ps -p "$p" -o comm= 2>/dev/null)" in
       python*|*/python*) printf '%s\n' "$p" ;;
