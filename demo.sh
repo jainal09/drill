@@ -174,7 +174,11 @@ nvx() { nvim --server "$SOCK" --remote-expr "$1" </dev/null 2>/dev/null; }
 # races through at full speed printing "sleep: missing operand" instead of
 # recording anything. awk ships with both macOS and every Linux, and returns
 # the same numbers.
-secs() { awk -v f="$1" -v s="$SPEED" 'BEGIN { printf "%.4f", f * s }'; }
+# LC_ALL=C is not decoration: awk's printf formats %f with the LOCALE's decimal
+# separator, so under a comma locale (de_DE, fr_FR, ...) this returns "0,0900"
+# and every `sleep` downstream fails -- the same silent breakage the bc removal
+# was meant to end, reached a different way.
+secs() { LC_ALL=C awk -v f="$1" -v s="$SPEED" 'BEGIN { printf "%.4f", f * s }'; }
 
 # key <spec> -- press one key
 key() {

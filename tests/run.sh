@@ -37,9 +37,18 @@ command -v nvim >/dev/null || { echo "run.sh: nvim not on PATH" >&2; exit 2; }
 # the mapping. Say it once, up front, instead. macOS always has pbcopy, so this
 # is silent there.
 if [ "$(uname -s)" != "Darwin" ]; then
+  # Mirror what nvimrc.lua accepts, or this warns when the editor is fine and
+  # stays quiet when it is not. Two things that means: the same provider list,
+  # and the same display requirement -- an installed xclip with no DISPLAY
+  # cannot own a selection, so it is not a provider for this purpose either.
   CLIP=""
-  for c in wl-copy xclip xsel win32yank.exe; do
-    command -v "$c" >/dev/null 2>&1 && { CLIP="$c"; break; }
+  for c in wl-copy xclip xsel win32yank.exe lemonade doitclient; do
+    command -v "$c" >/dev/null 2>&1 || continue
+    case "$c" in
+      wl-copy)      [ -n "${WAYLAND_DISPLAY:-}" ] || continue ;;
+      xclip|xsel)   [ -n "${DISPLAY:-}" ]         || continue ;;
+    esac
+    CLIP="$c"; break
   done
   # on WSL nvimrc.lua falls back to these two, so they count as a provider
   if [ -z "$CLIP" ] && command -v clip.exe >/dev/null 2>&1 &&
