@@ -371,10 +371,12 @@ directions. Bracketed paste is native, so pasting indented Python does not
 staircase.
 
 That register needs a *provider*, and nvim finds one by itself: `pbcopy`/
-`pbpaste` on macOS, `wl-copy`/`xclip`/`xsel`/`win32yank` elsewhere — WSLg hands
-you `wl-copy` and `xclip` already wired to the Windows clipboard. With none
-installed there is no error, only silence: `Ctrl+C` copies nothing and `Ctrl+V`
-over a selection deletes it and puts nothing back. `install.sh` checks. On WSL
+`pbpaste` on macOS, `wl-copy`/`xclip`/`xsel`/`win32yank` elsewhere. On WSL,
+WSLg supplies the display server but not those clients — they are packages you
+install. With none of them present nvim does say `clipboard: No provider`, but
+only once and only in the message area: what you actually notice is `Ctrl+C`
+copying nothing and `Ctrl+V` over a selection deleting it and putting nothing
+back. `install.sh` checks. On WSL
 with no display, drill falls back to `clip.exe` and `powershell.exe` on its own
 — see [docs/wsl.md](docs/wsl.md).
 

@@ -30,6 +30,9 @@ jobs:
           set -euo pipefail
           curl -fsSL -o nvim.tar.gz \
             https://github.com/neovim/neovim/releases/download/v0.11.0/nvim-linux-x86_64.tar.gz
+          # curl -f authenticates the transport, not the artifact. Pin the
+          # bytes too, so "which nvim did the gate run against" has one answer.
+          echo "fe0a5bc79e64c5e4d9f844cd96157ebd3919ef1343b329e9ebc3f455924cc7d6  nvim.tar.gz" | sha256sum -c -
           sudo tar xzf nvim.tar.gz -C /opt
           sudo ln -sf /opt/nvim-linux-x86_64/bin/nvim /usr/local/bin/nvim
           nvim --version | head -1
@@ -39,9 +42,12 @@ jobs:
       # that has nothing to do with the mapping under test. A headless runner
       # needs an X server for xclip to own a selection at all.
       #
-      # zsh because the timer suite runs drill.sh under bash AND zsh; python3
-      # for the pty drivers; pulseaudio-utils and libnotify-bin so the timer's
-      # chains have their Linux legs present rather than skipped.
+      # zsh because the timer suite runs drill.sh under bash AND zsh;
+      # pulseaudio-utils and libnotify-bin so the timer's chains have their
+      # Linux legs present rather than skipped. python3 is NOT listed: the pty
+      # drivers need it and ubuntu-latest preinstalls it, so it is asserted
+      # below rather than installed -- if that ever stops being true the gate
+      # should say so, not quietly pull a different interpreter.
       - name: deps
         run: |
           sudo apt-get update -qq
@@ -49,7 +55,9 @@ jobs:
             fzf zsh xclip xvfb procps libnotify-bin pulseaudio-utils
 
       - name: the gate
-        run: xvfb-run -a ./tests/run.sh
+        run: |
+          command -v python3 >/dev/null || { echo "no python3 on the runner"; exit 1; }
+          xvfb-run -a ./tests/run.sh
 
       # Not part of the gate: it drives a real editor for a screen recording and
       # is slow. --check is the cheap half, and it is what tells us demo.sh

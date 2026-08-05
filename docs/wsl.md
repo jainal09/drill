@@ -9,10 +9,12 @@ Terminal, against Neovim 0.11–0.12.
 
 ## The clipboard
 
-Nvim finds a provider by itself. Under WSLg you already have `wl-copy` and
-`xclip`, and both are wired straight to the Windows clipboard in both
-directions — copy in drill, paste in a browser, and back. Nothing in drill
-overrides that.
+Nvim finds a provider by itself. What WSLg gives you is the **Wayland and X
+server**, not the clipboard clients — `wl-clipboard` and `xclip` are ordinary
+packages you still have to install (`install.sh` offers them). Once one is
+installed *and* WSLg is running, it is wired straight to the Windows clipboard
+in both directions — copy in drill, paste in a browser, and back — and nothing
+in drill overrides that.
 
 The fallback only appears when that probe comes up **empty**: WSL with no WSLg,
 no X server, and no `win32yank.exe`. `clipboard=unnamedplus` with no provider
