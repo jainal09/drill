@@ -21,7 +21,7 @@ Syntax highlighting only. No completion, no LSP, no snippets, no AI.
 | `Tab` | indent the selected lines | **selection only** |
 | `Shift+Tab` | unindent the selected lines | **selection only** |
 | `Ctrl+Q` | visual block (was `Ctrl+V`) | normal, visual |
-| `Ctrl+Shift+Q` | **quit, with a confirmation** | normal, insert, **and inside the REPL** |
+| `Ctrl+Shift+Q` | **quit, with a confirmation** | normal, insert, **and inside the REPL** — except on a terminal with no CSI-u, where **normal mode is not covered**; see below |
 | **Shift+arrows** | **select, like any other editor** | normal, insert |
 | `Delete` / `Backspace` | delete the selection and keep typing | selection |
 | Arrows | movement | everywhere |
@@ -227,8 +227,21 @@ is live).
 It exists for the same reason `Ctrl+Shift+Z` does: in the legacy encoding Shift
 is dropped from a control chord, so `Ctrl+Q` and `Ctrl+Shift+Q` are the same
 byte. With CSI-u they are different keys — which is what lets this coexist with
-`Ctrl+Q` for visual block. **On a terminal that speaks no CSI-u it will not
-fire**; `:qa!` still works there.
+`Ctrl+Q` for visual block.
+
+**On a terminal that speaks no CSI-u the chord arrives as plain `Ctrl+Q`**, so
+on WSL — where Windows Terminal does not negotiate CSI-u — insert-mode and
+terminal-mode `Ctrl+Q` are bound to the same prompt. From insert, which is where
+this editor keeps you, you press the documented chord and it works. Two costs:
+plain `Ctrl+Q` then quits from insert as well (Cancel is still the default) and
+stops being vanilla vim's literal-insert.
+
+**Normal mode is not covered there.** `Ctrl+Q` in normal mode is visual block
+and is the only route to one — `Ctrl+V` is paste — so binding it to the prompt
+would leave no way to ask for a block at all, while quitting still has `:qa!`.
+The trade is deliberate: from normal mode on such a terminal, `Ctrl+Shift+Q`
+gives you a visual block, so press `i` first or use `:qa!`. None of this applies
+off WSL. See [docs/wsl.md](docs/wsl.md).
 
 | Command | Does |
 |---|---|
