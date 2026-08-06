@@ -76,22 +76,24 @@ running your file. It would do that inside a 15-row split, so `Ctrl+R` and
 under `/mnt` when picking an interpreter. On a healthy box neither does
 anything.
 
-## `Ctrl+Shift+Q` — check this one yourself
+## `Ctrl+Shift+Q`
 
-`Ctrl+Shift+Q` only exists when the terminal negotiates CSI-u. In the legacy
-encoding Shift is dropped from a control chord, so `Ctrl+Q` and `Ctrl+Shift+Q`
-are the same byte and cannot be told apart. Windows Terminal 1.22 and later
-negotiate it; older builds use win32-input-mode and the chord never fires,
-leaving `:qa!` as the way out.
+`Ctrl+Shift+Q` only exists as a distinct key when the terminal negotiates
+CSI-u. In the legacy encoding Shift is dropped from a control chord, so
+`Ctrl+Q` and `Ctrl+Shift+Q` are the same byte and nothing downstream can tell
+them apart.
 
-**The suite cannot tell you which you have.** `suite_quit.sh` writes
-`ESC[113;6u` straight onto the pty, so it passes on a terminal where the chord
-could never arrive. `demo.sh --check` cannot answer it either, and now says so
-instead of guessing: `--remote-send` collapses `<C-S-q>` to `<C-q>`, the exact
-collapse CSI-u exists to solve.
+**Measured: Windows Terminal 1.24 does not negotiate CSI-u with nvim**, so the
+chord arrives as plain `<C-q>`. Updating Windows Terminal does not fix that —
+1.24 is already new enough to speak the protocol and simply does not. The WSL
+`<C-q>` binding that makes the chord work lands with the quit checkpoint later
+in this stack; until then the way out is `:qa!`.
 
-So press it. If the confirmation appears, you are on a build that speaks CSI-u.
-If nothing happens, update Windows Terminal or use `:qa!`.
+**Nothing automated can check this.** `suite_quit.sh` writes `ESC[113;6u`
+straight onto the pty, so it passes on a terminal where the chord could never
+arrive, and `demo.sh --check` reaches the mapping over `--remote-send`, which
+speaks nvim key notation rather than terminal bytes — neither one is pressing a
+real key. That is why this needed a human.
 
 ## Keep `DRILL_HOME` off `/mnt/c`
 

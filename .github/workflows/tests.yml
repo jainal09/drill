@@ -19,7 +19,7 @@ jobs:
     steps:
       # pinned to a commit, not the v4 tag: a tag is mutable, so the runner
       # could execute different checkout code with no diff in this repo
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.3.0
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
 
       # NOT apt. Ubuntu's neovim is old enough that install.sh's own 0.9 gate
       # rejects it -- 22.04 ships 0.6.1 -- so the tarball, pinned, is the only
@@ -42,9 +42,14 @@ jobs:
       # that has nothing to do with the mapping under test. A headless runner
       # needs an X server for xclip to own a selection at all.
       #
-      # zsh because the timer suite runs drill.sh under bash AND zsh;
-      # pulseaudio-utils and libnotify-bin so the timer's chains have their
-      # Linux legs present rather than skipped. python3 is NOT listed: the pty
+      # zsh because the timer suite runs drill.sh under bash AND zsh.
+      #
+      # pulseaudio-utils and libnotify-bin make the runner resemble a real
+      # desktop box, but be clear about what that does NOT buy: suite_timer.sh
+      # starts 25- and 10-minute timers and kills them within 0.4s, so play()
+      # and notify() never run. Breaking the paplay or notify-send leg would
+      # leave all 36 cases and this job green. Those chains are covered by
+      # hand, not here. python3 is NOT listed: the pty
       # drivers need it and ubuntu-latest preinstalls it, so it is asserted
       # below rather than installed -- if that ever stops being true the gate
       # should say so, not quietly pull a different interpreter.
