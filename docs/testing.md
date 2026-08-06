@@ -70,6 +70,34 @@ with something weaker.
 CI runs the same script on `ubuntu-latest` under `xvfb` with `xclip`, so the
 clipboard cases are real there too — see `.github/workflows/tests.yml`.
 
+## One known flake, on WSL only
+
+`ctrlc_select_linewise` (and its `ctrlc_visual_linewise` sibling) fail roughly
+one full-suite run in three **on WSL**, always the same way: the buffer is
+correct but register `+` reads back empty. They pass 10/10 when run alone, and
+the instrumented mapping shows `getregion` returning the right text every time
+— so the selection and the keybinding are fine. What intermittently fails is
+the write to the *system* clipboard under the load of a 556-case run.
+
+It is not the provider. It reproduces with `wl-copy` (WSLg's default pick) and
+again with `WAYLAND_DISPLAY` unset to force `xclip`, and in the same run one of
+the pair passes while the other fails. It predates the WSL port — it flaked on
+unmodified `main` before any of this — and **CI has never hit it**, where a
+single `xclip` under `xvfb` is evidently steadier than a WSLg session.
+
+It is deliberately not papered over. A retry would hide a real clipboard
+regression, and giving these cases a stub provider would break the one rule the
+suite has: nothing here mocks anything. If you see exactly this failure, re-run
+the single case before believing it:
+
+```sh
+./tests/run_test.sh --name check --content 'aa\nbb\ncc' \
+  --keys '<S-Down><S-Down><C-c>Z' --expect 'Zcc' --expect-reg '+=aa
+bb'
+```
+
+If it passes alone, you saw the flake. If it fails alone, you have a real bug.
+
 ## Diagnostics
 
 Two diagnostics come with the mouse suite. `tests/mousecheck.sh` says whether
