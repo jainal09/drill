@@ -210,9 +210,17 @@ check_deps() {
     # macOS has pbcopy/pbpaste built in and nvim always finds them. Everywhere
     # else the provider is a separate package. On WSL clip.exe + powershell.exe
     # count: nvimrc.lua falls back to them when nothing else is installed.
+    # Same list and the same display rules as nvimrc.lua, or this asks you to
+    # install packages the editor would not have used -- and stays quiet about
+    # an xclip that is installed with no display, which the editor rejects.
     have=0
-    for c in wl-copy xclip xsel win32yank.exe; do
-      command -v "$c" >/dev/null 2>&1 && { have=1; break; }
+    for c in wl-copy xclip xsel win32yank.exe lemonade doitclient; do
+      command -v "$c" >/dev/null 2>&1 || continue
+      case "$c" in
+        wl-copy)     [ -n "${WAYLAND_DISPLAY:-}" ] || continue ;;
+        xclip|xsel)  [ -n "${DISPLAY:-}" ]         || continue ;;
+      esac
+      have=1; break
     done
     if [ "$have" -eq 0 ] && [ "$WSL" -eq 1 ] &&
        command -v clip.exe >/dev/null 2>&1 && command -v powershell.exe >/dev/null 2>&1; then

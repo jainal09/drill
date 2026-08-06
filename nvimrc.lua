@@ -32,55 +32,74 @@ vim.opt.mouse = "a"                    -- click + select + scroll
 vim.opt.virtualedit = "all"
 vim.opt.clipboard = "unnamedplus"      -- system clipboard (macOS: pbcopy/pbpaste)
 
+-- Are we on WSL? Asked by the clipboard fallback below, and again by the quit
+-- chord much further down. Both uses only ever ADD a fallback, so on macOS and
+-- on a normal Linux box every one of them is dead code.
+local IS_WSL = vim.env.WSL_DISTRO_NAME ~= nil
+if not IS_WSL and vim.fn.filereadable("/proc/version") == 1 then
+  local first = vim.fn.readfile("/proc/version", "", 1)[1] or ""
+  IS_WSL = first:lower():find("microsoft") ~= nil
+end
+
 -- ...and on WSL, something to point it AT. Nvim finds a provider by itself
 -- nearly everywhere -- pbcopy/pbpaste on macOS, wl-copy/xclip/xsel/win32yank on
--- Linux, and WSLg hands you wl-copy and xclip already wired to the Windows
--- clipboard, so on a normal WSL box this block does nothing at all. It exists
--- for the one that has no WSLg, no X and no win32yank, where the probe comes up
--- EMPTY and `unnamedplus` does not fail loudly: Ctrl+C copies nothing, Ctrl+V
--- pastes nothing, and Ctrl+V over a SELECTION deletes it and puts nothing back.
--- On top of that "clipboard: No provider" is a hit-enter prompt, in an editor
--- whose whole premise is that you never stop typing. clip.exe and
--- powershell.exe are the one pair still there when interop is on but no
--- display is.
+-- Linux -- so on a Mac and on any Linux desktop this block does nothing at all.
+--
+-- WSL is where it earns its place. `unnamedplus` with a provider that cannot
+-- reach a display does not fail loudly: Ctrl+C copies nothing, Ctrl+V pastes
+-- nothing, and Ctrl+V over a SELECTION deletes it and puts nothing back, while
+-- "clipboard: No provider" waits as a hit-enter prompt in an editor whose whole
+-- premise is that you never stop typing. clip.exe and powershell.exe are the one
+-- pair still there when interop is on but no display is.
+--
+-- Note WSLg supplies the display SERVER, not these clients: wl-clipboard and
+-- xclip are ordinary packages you still have to install.
 do
   local function have(cmd) return vim.fn.executable(cmd) == 1 end
-
-  -- Installed is not the same as usable, and this is the distinction the whole
-  -- block turns on. xclip and xsel talk to an X server; wl-copy talks to a
-  -- Wayland compositor. Installed with neither running -- a WSL box with no
-  -- WSLg, which is precisely the case this fallback exists for -- they are
-  -- found by executable() and then fail on every copy, so trusting the name
-  -- alone would skip the fallback and leave the clipboard as dead as if
-  -- nothing were installed at all. Require the display each one actually
-  -- needs. pbcopy, win32yank and the network ones need no display.
-  -- ~= nil is not the test: an EXPORTED-BUT-EMPTY DISPLAY="" is a string, so it
-  -- passes a nil check while naming no display at all, and the fallback would
-  -- be skipped for a provider that cannot connect to anything.
+  -- an EXPORTED-BUT-EMPTY DISPLAY="" is a string, so `~= nil` accepts it while
+  -- it names no display at all
   local function set(v) return v ~= nil and v ~= "" end
-  local function usable(cmd)
-    if not have(cmd) then return false end
-    if cmd == "wl-copy" then return set(vim.env.WAYLAND_DISPLAY) end
-    if cmd == "xclip" or cmd == "xsel" then return set(vim.env.DISPLAY) end
-    return true
-  end
 
-  local provider = false
+  -- The nominal native provider, by name only.
+  local native = nil
   for _, c in ipairs({ "pbcopy", "wl-copy", "xclip", "xsel",
                        "win32yank.exe", "lemonade", "doitclient" }) do
-    if usable(c) then provider = true break end
+    if have(c) and (c ~= "wl-copy"  or set(vim.env.WAYLAND_DISPLAY))
+               and (c ~= "xclip" and c ~= "xsel" or set(vim.env.DISPLAY)) then
+      native = c
+      break
+    end
   end
 
-  local wsl = vim.env.WSL_DISTRO_NAME ~= nil
-  if not wsl and vim.fn.filereadable("/proc/version") == 1 then
-    local first = vim.fn.readfile("/proc/version", "", 1)[1] or ""
-    wsl = first:lower():find("microsoft") ~= nil
+  -- A display NAME is not a display. DISPLAY can be exported and stale, point
+  -- at a server that is gone, or fail authorization -- and then xclip is
+  -- "installed and usable" by every cheap test and still cannot move a byte.
+  -- Three reviewers flagged that gap, so ask the display itself.
+  --
+  -- WSL only, because that is the only place with something to fall back TO,
+  -- and it READS rather than writes: xclip forks a daemon to own a selection it
+  -- has been given, so a write probe leaves a process behind and can block a
+  -- pipeline waiting on it. A read answers the only question here -- does the
+  -- display respond -- and exits. Measured at ~3ms.
+  local function display_answers()
+    local probe = ({ ["wl-copy"] = { "wl-paste", "--no-newline" },
+                     ["xclip"]   = { "xclip", "-o", "-selection", "clipboard" },
+                     ["xsel"]    = { "xsel", "--clipboard", "--output" } })[native]
+    if not probe then return true end            -- nothing display-bound to ask
+    vim.fn.system(probe)
+    return vim.v.shell_error == 0
   end
 
-  if not provider and wsl and have("clip.exe") and have("powershell.exe") then
-    -- paste is a Lua function rather than a command because Get-Clipboard
-    -- returns CRLF, and nvim splits on \n only -- every pasted line would keep
-    -- a literal \r on the end. Nothing built in strips it.
+  -- Leave nvim's own provider alone whenever it can actually work: it gets
+  -- linewise/charwise register semantics right, and reimplementing that here
+  -- got the trailing newline of a linewise yank wrong on the first attempt.
+  -- Only when the display does not answer -- or there is no native tool at all
+  -- -- take over with the pair that is always there under interop.
+  if IS_WSL and have("clip.exe") and have("powershell.exe")
+     and not (native and display_answers()) then
+    -- Get-Clipboard returns CRLF and nvim splits on \n only, so paste has to be
+    -- a Lua function: nothing built in strips the \r that would otherwise end
+    -- every pasted line.
     local function from_windows()
       local out = vim.fn.systemlist({ "powershell.exe", "-NoProfile", "-NoLogo",
                                       "-Command", "Get-Clipboard" })
@@ -92,9 +111,9 @@ do
       name = "wsl-interop",
       copy  = { ["+"] = "clip.exe",   ["*"] = "clip.exe" },
       paste = { ["+"] = from_windows, ["*"] = from_windows },
-      -- every paste really asks Windows. The round trip costs ~0.4s, which is
-      -- the price of this path existing at all -- but a cache that answers with
-      -- what YOU last copied would silently ignore anything copied in a browser.
+      -- every paste really asks Windows. A cache would answer with what YOU
+      -- last copied and silently ignore anything copied in a browser, which is
+      -- most of what this register is for.
       cache_enabled = 0,
     }
   end
@@ -964,7 +983,8 @@ if found_py == "" or found_py:match("^/mnt/") then
       vim.notify("drill: no usable python3 on PATH"
         .. (found_py == "" and " (none found)"
                             or " (`python3` is the Windows Store alias)")
-        .. " -- Ctrl+R and Ctrl+E are disabled. See docs/wsl.md.",
+        .. " -- Ctrl+R and Ctrl+E are disabled. Install a Linux python3"
+        .. " (apt install python3); the Windows one cannot run these files.",
         vim.log.levels.WARN)
     end)
   end
