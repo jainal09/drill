@@ -57,10 +57,50 @@ cases assert against the painted screen.
 
 ## What the gate needs
 
-The gate needs three things the editor itself does not: `python3` for the pty
-suites, `zsh` because the timer suite runs `drill.sh` under both shells, and
-`perl` — macOS ships no GNU `timeout`, so `tests/bin/timeout` is a three-line
-`alarm` shim that `run.sh` puts on `PATH`.
+The gate needs four things the editor itself does not: `python3` for the pty
+suites, `zsh` because the timer suite runs `drill.sh` under both shells, a
+**clipboard provider** because several cases assert the real `+` register (with
+none, they fail for a reason that has nothing to do with the mapping they are
+named after — `run.sh` warns up front rather than letting that look like a
+regression), and `perl` *only where there is no `timeout(1)` at all*, i.e.
+macOS. `tests/bin/timeout` is that `alarm` shim; `run.sh` puts it on `PATH`
+first, so on Linux it hands over to the real `timeout` rather than shadowing it
+with something weaker.
+
+CI runs the same script on `ubuntu-latest` under `xvfb` with `xclip`, so the
+clipboard cases are real there too — see `.github/workflows/tests.yml`.
+
+## One known flake, on WSL only
+
+Roughly one full-suite run in three **on WSL**, one of the six cases in
+`suite_config.sh` that assert register `+` fails — observed so far as
+`ctrlc_select_linewise`, `ctrlc_visual_linewise` and `cut_ctrl_x_in_select`,
+and there is no reason the other three are immune. It is always the same
+signature: **the buffer is correct and `+` reads back empty**.
+
+They pass when run alone (10/10, 3/3, 3/3 for the three above), and the
+instrumented mapping shows `getregion` returning the right text every time — so
+the selection and the keybinding are fine. What intermittently fails is the
+write to the *system* clipboard under the load of a 556-case run.
+
+It is not the provider. It reproduces with `wl-copy` (WSLg's default pick) and
+again with `WAYLAND_DISPLAY` unset to force `xclip`, and in the same run one
+register case passes while another fails. It predates the WSL port — it flaked on
+unmodified `main` before any of this — and **CI has never hit it**, where a
+single `xclip` under `xvfb` is evidently steadier than a WSLg session.
+
+It is deliberately not papered over. A retry would hide a real clipboard
+regression, and giving these cases a stub provider would break the one rule the
+suite has: nothing here mocks anything. If you see this signature — buffer right, `+` empty — re-run that single case
+before believing it. For example:
+
+```sh
+./tests/run_test.sh --name check --content 'aa\nbb\ncc' \
+  --keys '<S-Down><S-Down><C-c>Z' --expect 'Zcc' --expect-reg '+=aa
+bb'
+```
+
+If it passes alone, you saw the flake. If it fails alone, you have a real bug.
 
 ## Diagnostics
 

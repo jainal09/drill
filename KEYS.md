@@ -75,7 +75,9 @@ walks into the empty space past it instead of stopping. Delete the
 `vim.opt.virtualedit` line to get the old behaviour back, at the price of the
 click snapping again.
 
-**Option+click is the same click.** macOS habit — it is how iTerm2 moves the
+**Option+click is the same click.** (Alt+click on Linux and WSL — same key, same
+handling; the explanation below is macOS because that is the habit it
+accommodates.) macOS habit — it is how iTerm2 moves the
 cursor at a shell prompt — but vim gives `ALT-LeftMouse` a different job, a
 *blockwise* selection, so it used to put the caret in the right place and then
 leave you stuck in a one-cell block where the next key was a block operator
@@ -367,6 +369,16 @@ Plain variable names do not — that needs LSP or treesitter, both excluded here
 `clipboard=unnamedplus`. Shares one clipboard with the browser in both
 directions. Bracketed paste is native, so pasting indented Python does not
 staircase.
+
+That register needs a *provider*, and nvim finds one by itself: `pbcopy`/
+`pbpaste` on macOS, `wl-copy`/`xclip`/`xsel`/`win32yank` elsewhere. On WSL,
+WSLg supplies the display server but not those clients — they are packages you
+install. With none of them present nvim does say `clipboard: No provider`, but
+only once and only in the message area: what you actually notice is `Ctrl+C`
+copying nothing and `Ctrl+V` over a selection deleting it and putting nothing
+back. `install.sh` checks. On WSL
+with no display, drill falls back to `clip.exe` and `powershell.exe` on its own
+— see [docs/wsl.md](docs/wsl.md).
 
 **Consequence to know:** with `unnamedplus`, *every* `d`, `x`, `c` and `dd` also
 overwrites the system clipboard. To delete without touching it, use the

@@ -73,19 +73,22 @@ Landed as a stack of PRs, one per checkpoint, each based on the previous.
       made CSI-u necessary. Socket mode cannot ask that question, so it skips
       it and says why.
       *Gate: full `./tests/run.sh` 556/556; `./demo.sh --check` clean.*
-- [ ] **5 — `wsl/05-ci-docs`** · `.github/workflows/tests.yml` running the suite
-      on `ubuntu-latest` under `xvfb` with `xclip`, so the four clipboard cases
-      are real; `docs/wsl.md`; requirement lines in `README.md`, `KEYS.md`,
+- [x] **5 — `wsl/05-ci-docs`** · `.github/workflows/tests.yml` running the suite
+      on `ubuntu-latest` under `xvfb` with `xclip`, so the clipboard cases are
+      real; `docs/wsl.md`; requirement lines in `README.md`, `KEYS.md`,
       `docs/testing.md`.
       *Gate: CI green on the PR itself.*
 
-### Open question, to be measured not assumed
+### Still to be measured by a human
 
 `Ctrl+Shift+Q` only exists when the terminal negotiates CSI-u. Windows Terminal
 ≥1.22 does; older builds use win32-input-mode and the chord never fires, leaving
-`:qa!` as the only way out. `suite_quit.sh` synthesises `ESC[113;6u` straight
-onto the pty, so **the suite cannot catch this** — it has to be pressed by hand
-in Windows Terminal. Finding gets recorded in `docs/wsl.md` at checkpoint 5.
+`:qa!` as the only way out. Nothing automated can settle this: `suite_quit.sh`
+synthesises `ESC[113;6u` straight onto the pty, so it passes on a terminal where
+the chord could never arrive, and `demo.sh --check` cannot send CSI-u over
+`--remote-send` at all. **Press it in Windows Terminal.** If the confirmation
+appears, your build speaks CSI-u; if nothing happens, update Windows Terminal or
+use `:qa!`. Written up in [docs/wsl.md](docs/wsl.md).
 
 ### Not in scope, deliberately
 
