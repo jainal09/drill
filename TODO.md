@@ -63,8 +63,11 @@ Landed as a stack of PRs, one per checkpoint, each based on the previous.
       Scope grew once the suite could run here: **`pgrep -f "$TAG"` matches any
       process that merely *mentions* the tag**, so `t` was stopping strangers —
       including the test shell that holds the tag in its own `-c` string, which
-      is why 30 of 36 timer cases failed on Linux before any of this. Confirm
-      each candidate is an interpreter with `ps -o comm=` instead.
+      is why 30 of 36 timer cases failed on Linux before any of this. An
+      executable check and an end-anchor were both tried and both still
+      accepted `python3 train.py --tag drill-timer`; identity finally comes
+      from a marker inside the timer's own source, which is `argv[2]` of the
+      running python and which nothing else carries.
       *Gate: `suite_timer.sh` 36/36 (was 6/36); sound and notification both fire.*
 - [x] **4 — `wsl/04-demo-tests`** · `demo.sh` `bc` → `awk`; `tests/bin/timeout`
       delegates to real GNU `timeout` when one exists instead of shadowing it;
@@ -72,12 +75,15 @@ Landed as a stack of PRs, one per checkpoint, each based on the previous.
       counts failing *suites* rather than summing exit codes — it called 30
       broken timer cases "2 FAILING CASE(S)", small enough to read as a flake.
 
-      Also: `demo.sh --check` failed its `Ctrl+Shift+Q` case on every Linux box
-      and told you to record with `--keys socket`, which is the mode it was
-      already in. `--remote-send` collapses `<C-S-q>` to `<C-q>`, whose
-      literal-insert then eats the cancelling `c` — the exact Shift-drop that
-      made CSI-u necessary. Socket mode cannot ask that question, so it skips
-      it and says why.
+      Also, and recorded here because the wrong version of it shipped first:
+      `demo.sh --check` appeared to fail its `Ctrl+Shift+Q` case, and I
+      diagnosed it as `--remote-send` collapsing `<C-S-q>` to `<C-q>`. **That
+      was wrong.** `--remote-send` speaks nvim's key *notation*, not terminal
+      bytes, so no encoding happens and CSI-u never enters into it — measured
+      under a real pty, socket mode reports `ok Ctrl+Shift+Q prompts (CSI-u)`.
+      What I had actually measured was a screenless nvim, where `confirm()`
+      cannot draw and returns instantly. The skip built on that reasoning is
+      reverted; the check runs unconditionally, as it always did.
       *Gate: full `./tests/run.sh` 556/556; `./demo.sh --check` clean.*
 - [x] **5 — `wsl/05-ci-docs`** · `.github/workflows/tests.yml` running the suite
       on `ubuntu-latest` under `xvfb` with `xclip`, so the clipboard cases are
