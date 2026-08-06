@@ -98,15 +98,21 @@ Landed as a stack of PRs, one per checkpoint, each based on the previous.
 
 `Ctrl+Shift+Q` did not work on WSL. Nothing automated could have told us:
 `suite_quit.sh` writes `ESC[113;6u` straight onto the pty, so it passes on a
-terminal where the chord could never arrive, and `demo.sh --check` cannot send
-CSI-u over `--remote-send` at all. It took pressing the key.
+terminal where the chord could never arrive, and `demo.sh --check` reaches the
+mapping over `--remote-send`, which consumes nvim's key *notation* and never
+exercises a terminal encoding at all. Neither one presses a key. It took a
+human.
 
 Windows Terminal 1.24 is new enough to speak CSI-u and does not negotiate it
 with nvim, so the chord arrives as the legacy `0x11` — plain `<C-q>` — and the
-`<C-S-q>` mapping is never reached. On WSL the config now also binds
-insert-mode `<C-q>`, which is what actually arrives: you press the documented
-chord and it works. Normal-mode `<C-q>` stays visual block, and off WSL nothing
-changes. Written up in [docs/wsl.md](docs/wsl.md).
+`<C-S-q>` mapping is never reached. On WSL the config now also binds `<C-q>` in
+insert and terminal mode, which is what actually arrives.
+
+**Normal mode is deliberately not covered.** There `<C-q>` is visual block and
+is the only route to one, since `<C-v>` is paste — so binding it to the prompt
+would leave no way to ask for a block, while quitting still has `:qa!`. From
+normal mode on such a terminal the chord gives you a block; press `i` first.
+Off WSL none of this applies. Written up in [docs/wsl.md](docs/wsl.md).
 
 ### Not in scope, deliberately
 
