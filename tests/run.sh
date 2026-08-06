@@ -53,15 +53,28 @@ if [ "$(uname -s)" != "Darwin" ]; then
   for c in wl-copy xclip xsel win32yank.exe lemonade doitclient; do
     command -v "$c" >/dev/null 2>&1 || continue
     case "$c" in
-      wl-copy) printf x | timeout 5 wl-copy >/dev/null 2>&1 || continue ;;
-      xclip)   printf x | timeout 5 xclip -selection clipboard >/dev/null 2>&1 || continue ;;
-      xsel)    printf x | timeout 5 xsel --clipboard --input >/dev/null 2>&1 || continue ;;
+      wl-copy)       printf x | timeout 5 wl-copy >/dev/null 2>&1 || continue ;;
+      xclip)         printf x | timeout 5 xclip -selection clipboard >/dev/null 2>&1 || continue ;;
+      xsel)          printf x | timeout 5 xsel --clipboard --input >/dev/null 2>&1 || continue ;;
+      win32yank.exe) printf x | timeout 5 win32yank.exe -i >/dev/null 2>&1 || continue ;;
+      lemonade)      printf x | timeout 5 lemonade copy >/dev/null 2>&1 || continue ;;
+      # no write command we can run blind, so do not vouch for it -- claiming a
+      # provider works on the strength of its filename is the bug this loop is
+      # here to avoid
+      doitclient)    continue ;;
     esac
     CLIP="$c"; break
   done
-  # on WSL nvimrc.lua falls back to these two, so they count as a provider
+  # The WSL fallback has to be probed too, and it is the one that matters most:
+  # clip.exe and powershell.exe are usually PRESENT and can still be unusable if
+  # interop is off, and accepting them on filename alone left this silent in
+  # exactly that case. Both halves, because nvimrc.lua needs copy AND paste.
   if [ -z "$CLIP" ] && command -v clip.exe >/dev/null 2>&1 &&
-     command -v powershell.exe >/dev/null 2>&1; then CLIP="clip.exe"; fi
+     command -v powershell.exe >/dev/null 2>&1 &&
+     printf x | timeout 10 clip.exe >/dev/null 2>&1 &&
+     timeout 15 powershell.exe -NoProfile -NoLogo -Command Get-Clipboard >/dev/null 2>&1; then
+    CLIP="clip.exe"
+  fi
   if [ -z "$CLIP" ]; then
     echo "run.sh: WARNING -- no clipboard provider on PATH."
     echo "        The cases asserting register '+' will fail for that alone."
