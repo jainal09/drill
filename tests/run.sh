@@ -66,13 +66,22 @@ if [ "$(uname -s)" = "Darwin" ]; then
   # and primary, and primary is the user's too), so that branch still writes,
   # as its own comment already owns.
   #
-  # Saving and restoring the general pasteboard instead would be worse than the
+  # Saving and restoring the GENERAL pasteboard instead would be worse than the
   # bug: pbpaste yields text, so a round-trip silently flattens an image, RTF or
-  # a file promise to nothing.
+  # a file promise to nothing. On the find board that objection does not apply --
+  # it holds the system find string, which is text by definition -- so this one
+  # IS put back, and the probe costs you nothing at all. (Worst case a trailing
+  # newline: $(...) strips them. That is a search term, not your data.)
+  #
+  # Compared by VALUE, not by exit code. What the register cases need is a real
+  # round trip -- write it, read the same thing back -- and that is the property
+  # to assert, not that two processes happened to exit 0.
+  FIND_WAS="$(timeout 5 pbpaste -pboard find 2>/dev/null)"
   if printf x | timeout 5 pbcopy -pboard find >/dev/null 2>&1 &&
-     timeout 5 pbpaste -pboard find >/dev/null 2>&1; then
+     [ "$(timeout 5 pbpaste -pboard find 2>/dev/null)" = x ]; then
     CLIP="pbcopy"
   fi
+  printf %s "$FIND_WAS" | timeout 5 pbcopy -pboard find >/dev/null 2>&1
 else
   # Mirror what nvimrc.lua accepts, or this warns when the editor is fine and
   # stays quiet when it is not. Two things that means: the same provider list,
