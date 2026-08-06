@@ -165,6 +165,21 @@ _applescript_for() {
 nv()  { nvim --server "$SOCK" --remote-send "$1" </dev/null >/dev/null 2>&1; }
 nvx() { nvim --server "$SOCK" --remote-expr "$1" </dev/null 2>/dev/null; }
 
+# secs <factor> -- <factor> * $SPEED, as a number `sleep` will take.
+#
+# This was `bc`, which is NOT installed by default on Debian or Ubuntu, and so
+# not on most WSL images. It is called once per keystroke, once per caption and
+# once per pause, and the failure is silent: there is no `set -e` here, so a
+# missing bc makes every `$( )` empty, every `sleep ""` an error, and the demo
+# races through at full speed printing "sleep: missing operand" instead of
+# recording anything. awk ships with both macOS and every Linux, and returns
+# the same numbers.
+# LC_ALL=C is not decoration: awk's printf formats %f with the LOCALE's decimal
+# separator, so under a comma locale (de_DE, fr_FR, ...) this returns "0,0900"
+# and every `sleep` downstream fails -- the same silent breakage the bc removal
+# was meant to end, reached a different way.
+secs() { LC_ALL=C awk -v f="$1" -v s="$SPEED" 'BEGIN { printf "%.4f", f * s }'; }
+
 # key <spec> -- press one key
 key() {
   local spec="$1"
@@ -173,7 +188,7 @@ key() {
   else
     nv "$(_nvim_notation "$spec")"
   fi
-  sleep "$(bc -l <<< "0.09 * $SPEED")"
+  sleep "$(secs 0.09)"
 }
 
 # Escape for an AppleScript double-quoted literal. Written out by hand because
@@ -184,7 +199,7 @@ _as_quote() { printf '%s' "$1" | sed -e 's/\\/\\\\/g' -e 's/"/\\"/g'; }
 
 # type <text> -- type it a character at a time, like a person
 type_text() {
-  local text="$1" per; per="$(bc -l <<< "0.045 * $SPEED")"
+  local text="$1" per; per="$(secs 0.045)"
   if [ "$KEYMODE" = system ]; then
     # one osascript for the whole string: spawning a process per character
     # makes even short lines take seconds
@@ -210,7 +225,7 @@ APPLESCRIPT
   fi
 }
 
-pause() { sleep "$(bc -l <<< "$1 * $SPEED")"; }
+pause() { sleep "$(secs "$1")"; }
 
 # wait_for <text> -- block until <text> shows up in the current buffer's tail.
 # NOT a longer sleep: every pause here is multiplied by --speed, so a fixed wait
@@ -326,7 +341,7 @@ FAKE_PROMPT=$'\033[1;32m~\033[0m $ '
 shell_line() {                       # type a command at a fake prompt, then run it
   printf '%b' "$FAKE_PROMPT"
   local i
-  for (( i=0; i<${#1}; i++ )); do printf '%s' "${1:$i:1}"; sleep "$(bc -l <<< "0.04 * $SPEED")"; done
+  for (( i=0; i<${#1}; i++ )); do printf '%s' "${1:$i:1}"; sleep "$(secs 0.04)"; done
   printf '\n'
   pause 0.4
 }
@@ -626,6 +641,7 @@ preflight() {
   # Select mode and undoing, and this check reported a false failure from that
   # state -- the chord itself is fine from a clean one, verified separately.
   # A preflight that cries wolf is worse than no preflight.
+  #
   nv '<C-\><C-n>'
   nv '<Cmd>call setline(1, "x = 1")<CR>'
   nv '<Cmd>call cursor(1,1)<CR>'
@@ -634,7 +650,11 @@ preflight() {
   local before; before="$(nvx 'getline(1)')"
   key CS-q; pause 1.1
   key c;    pause 0.8
-  ck "Ctrl+Shift+Q prompts (CSI-u)" "$(nvx 'getline(1)')" "$before"
+  # NOT "(CSI-u)". --remote-send consumes nvim key notation and never emits
+  # ESC[113;6u, so this proves the MAPPING is reachable and says nothing about
+  # what a physical terminal would deliver. Naming it after the protocol
+  # claimed a guarantee this check cannot make.
+  ck "Ctrl+Shift+Q reaches its mapping" "$(nvx 'getline(1)')" "$before"
   ck "...and Cancel came back alive" "$(editor_alive && echo yes || echo no)" "yes"
 
   nv '<Cmd>qa!<CR>'

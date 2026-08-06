@@ -60,10 +60,19 @@ Landed as a stack of PRs, one per checkpoint, each based on the previous.
       is why 30 of 36 timer cases failed on Linux before any of this. Confirm
       each candidate is an interpreter with `ps -o comm=` instead.
       *Gate: `suite_timer.sh` 36/36 (was 6/36); sound and notification both fire.*
-- [ ] **4 — `wsl/04-demo-tests`** · `demo.sh` `bc` → `awk`; `tests/bin/timeout`
+- [x] **4 — `wsl/04-demo-tests`** · `demo.sh` `bc` → `awk`; `tests/bin/timeout`
       delegates to real GNU `timeout` when one exists instead of shadowing it;
-      `tests/run.sh` says so loudly when no clipboard provider is on PATH.
-      *Gate: full `./tests/run.sh` 556/556; `./demo.sh --check`.*
+      `tests/run.sh` says so loudly when no clipboard provider is on PATH, and
+      counts failing *suites* rather than summing exit codes — it called 30
+      broken timer cases "2 FAILING CASE(S)", small enough to read as a flake.
+
+      Also: `demo.sh --check` failed its `Ctrl+Shift+Q` case on every Linux box
+      and told you to record with `--keys socket`, which is the mode it was
+      already in. `--remote-send` collapses `<C-S-q>` to `<C-q>`, whose
+      literal-insert then eats the cancelling `c` — the exact Shift-drop that
+      made CSI-u necessary. Socket mode cannot ask that question, so it skips
+      it and says why.
+      *Gate: full `./tests/run.sh` 556/556; `./demo.sh --check` clean.*
 - [ ] **5 — `wsl/05-ci-docs`** · `.github/workflows/tests.yml` running the suite
       on `ubuntu-latest` under `xvfb` with `xclip`, so the four clipboard cases
       are real; `docs/wsl.md`; requirement lines in `README.md`, `KEYS.md`,
