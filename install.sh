@@ -289,12 +289,19 @@ fi
 
 # ---- files ------------------------------------------------------------
 mkdir -p "$DRILL_HOME/templates" "$DRILL_HOME/solves" "$DRILL_HOME/scratch"
-# resolve it the same way SRC is resolved, so the comparison below is between
-# two real paths and not between "~/drill" and "/home/you/drill".
-# -P on both: bash's cd/pwd resolve LOGICALLY by default, so a symlinked
-# DRILL_HOME pointing at the clone would compare unequal, the copy loop would
-# run, and `cp a a` would fail on the very case the guard exists to catch.
-DRILL_HOME="$(cd "$DRILL_HOME" && pwd -P)"
+# A SEPARATE variable, and that matters. This is only for the identity test
+# below; DRILL_HOME itself must stay exactly as the user configured it, because
+# it is what gets written into the shell rc and printed back to them. Resolving
+# it in place bakes a symlink's CURRENT target into that rc line: point
+# ~/drill at v1, install, later retarget it at v2, and the rc still sources
+# v1 -- which by then may not exist. That would change macOS behaviour too, on
+# a shell path with no OS branch anywhere near it.
+#
+# -P on both sides here because bash's cd/pwd resolve LOGICALLY by default, so
+# a symlinked DRILL_HOME pointing at the clone would compare unequal, the copy
+# loop would run, and `cp a a` would fail on the very case the guard exists to
+# catch.
+DRILL_HOME_REAL="$(cd "$DRILL_HOME" && pwd -P)"
 
 # The README's own instructions are `git clone ...` then `cd drill &&
 # ./install.sh`. Run from your home directory -- which is where people run it --
@@ -310,7 +317,7 @@ for f in nvimrc.lua drill.sh preload.py KEYS.md; do
   [ -f "$SRC/$f" ] || bail "missing $f next to install.sh"
 done
 
-if [ "$SRC" = "$DRILL_HOME" ]; then
+if [ "$SRC" = "$DRILL_HOME_REAL" ]; then
   say "running from $DRILL_HOME itself -- the files are already in place"
 else
   for f in nvimrc.lua drill.sh preload.py KEYS.md; do
