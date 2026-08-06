@@ -102,14 +102,28 @@ defaults to **Cancel**, so a slip costs one keystroke. And insert-mode
 `Ctrl+Q` is no longer vanilla vim's literal-insert; in a Python scratchpad where
 `Ctrl+V` is already paste, that was close to unreachable anyway.
 
-This is gated on WSL. On macOS, and on any Linux terminal that does negotiate
-CSI-u, none of it applies and `Ctrl+Q` keeps every meaning it had.
+Gated on **WSL**, not on the protocol — there is no runtime signal for whether
+CSI-u was negotiated (`vim.g.termfeatures` is `nil` even in a real TUI on 0.12),
+so the binding is installed on every WSL session. If yours *does* speak CSI-u,
+`Ctrl+Shift+Q` reaches its own mapping as normal and you additionally get bare
+`Ctrl+Q` quitting from insert, losing literal-insert there. Off WSL none of it
+applies and `Ctrl+Q` keeps every meaning it had.
+
+**Normal mode is the gap.** `Ctrl+Q` in normal mode is visual block, and it is
+the only way to reach one — `Ctrl+V` there is paste. So on a terminal without
+CSI-u, pressing `Ctrl+Shift+Q` from normal mode gives you a visual block, not
+the prompt. That is a deliberate trade: quitting from normal mode still has
+`:qa!`, while visual block would have nothing left. If you are in normal mode
+and want the prompt, press `i` first, or use `:qa!`.
 
 **Nothing automated can check the CSI-u half.** `suite_quit.sh` writes
 `ESC[113;6u` straight onto the pty, so it passes on a terminal where the chord
 could never arrive; `demo.sh --check` cannot answer it either, and says so
-rather than guessing — `--remote-send` collapses `<C-S-q>` to `<C-q>`, the exact
-collapse CSI-u exists to solve. Which is why this needed a human to press it.
+rather than guessing — `--remote-send` consumes nvim's key *notation*, so it
+delivers `<C-S-q>` to the mapping and never exercises the terminal encoding at
+all. (An earlier version of this page said it collapsed the chord. It does not;
+that claim was measured against a screenless nvim and is retracted.) Which is
+why this needed a human to press it.
 
 ## Keep `DRILL_HOME` off `/mnt/c`
 
