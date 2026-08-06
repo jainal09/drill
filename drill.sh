@@ -107,6 +107,11 @@ ri() {
 
 # ---- timer ------------------------------------------------------------
 _DRILL_TIMER_PY=$(cat <<'PY'
+# drill-timer-proc-9f3c2a1e -- IDENTITY, not a comment. This whole script is
+# argv[2] of the running python, so this line is in the process's command line
+# and nothing else on the system has it. drill.sh matches on it to know which
+# processes are really its timers; see _drill_timer_pids. Do not edit or remove
+# without changing _DRILL_TIMER_MARKER to match.
 import os, shutil, subprocess, sys, time
 
 mins = float(sys.argv[1])
@@ -157,9 +162,18 @@ def play():
                       "/usr/share/sounds/freedesktop/stereo/bell.oga",
                       "/usr/share/sounds/freedesktop/stereo/alarm-clock-elapsed.oga"])
     if snd:
-        for player in ("paplay", "pw-play", "aplay"):
+        for player in ("paplay", "pw-play"):   # both decode Ogg
             if run([player, snd]):
                 return True
+    # aplay decodes nothing. Handed a .oga it plays the COMPRESSED BYTES as raw
+    # PCM -- measured on alsa-utils 1.2.6: "Playing raw data ... Unsigned 8 bit,
+    # Rate 8000 Hz, Mono", exit 0. So an ALSA-only host got three bursts of
+    # noise AND a success that suppressed every fallback below. Only ever give
+    # it a WAV, and only one that exists.
+    wav = first_file(["/usr/share/sounds/alsa/Front_Center.wav",
+                      "/usr/share/sounds/sound-icons/prompt.wav"])
+    if wav and run(["aplay", "-q", wav]):
+        return True
     # WSL with no working Linux audio: Windows has both a player and its own
     # sounds, and interop is the one thing such a box still has.
     return run(["powershell.exe", "-NoProfile", "-NoLogo", "-Command",
@@ -226,38 +240,39 @@ PY
 # timer repaints it twice a second, and once it is gone nothing else does.
 _drill_timer_clear_title() { printf '\033]0;\007'; }
 
+# Must match the marker line inside _DRILL_TIMER_PY above.
+_DRILL_TIMER_MARKER='drill-timer-proc-9f3c2a1e'
+
 # Every running timer, one PID per line. Written as a here-doc loop rather than
 # `for p in $pids` on purpose: zsh does not word-split unquoted expansions the
 # way bash does, so that form iterates ONCE with the whole newline-joined blob
 # in zsh and per-PID in bash. This behaves the same in both.
 #
-# `pgrep -f` alone is not the question we mean. It matches the tag ANYWHERE in
-# a command line, so it also matches any process that merely mentions it -- a
-# shell started as `sh -c '... DRILL_TIMER_TAG=drill-timer ... '`, an editor
-# opened on a file with that name, a grep for it. `t` then stops that stranger,
-# because stopping "the running timer" is the first thing it does. Measured on
-# Linux: a shell holding the tag in its argv was found and killed by its own
-# call to `t`, exit 143.
+# Identity is the MARKER, not the tag. The tag is public and short, so anything
+# may legitimately carry it -- `python3 train.py --tag drill-timer` is a python
+# process whose LAST argument is the tag, which is why neither an executable
+# check nor an end-anchor is enough on its own. Both were tried; both accepted
+# that process and would have handed its PID to `kill`. The marker lives inside
+# the timer's own source, which is argv[2] of the running python, so only a
+# real drill timer carries it.
 #
-# So confirm each candidate is an interpreter before believing it. The timer is
-# always `python3 -c <script> <mins> <tag>`, and `ps -o comm=` is the process's
-# executable, not its arguments -- so it cannot be fooled by a command line
-# that merely quotes the tag. POSIX, and identical on macOS.
-#
-# Two conditions, because neither alone is enough. `python3 train.py --tag
-# drill-timer` is a python process that mentions the tag, and the comm check
-# alone would hand it to `kill`. So also require the tag to be the LAST
-# argument -- which is not a trick, it is the invariant this file already
-# relies on and documents above: the tag is appended after the minutes for
-# exactly this purpose. pgrep matches against the whole command line, so `$`
-# anchors there without ps truncating anything.
+# Still intersected with the tag anchored at the end, because the marker alone
+# cannot tell YOUR timer from the test suite's -- they run the same script and
+# differ only by tag. Two pgrep passes rather than `ps -o args=`: pgrep matches
+# the whole command line, while ps truncates, and the timer's argv holds a ~2KB
+# script -- the tag would be cut off the end of exactly the string being
+# matched. It also means ps is not required at all.
 _drill_timer_pids() {
-  local p
+  local p q mine
+  mine="$(pgrep -f "$_DRILL_TIMER_MARKER" 2>/dev/null)"
+  [ -n "$mine" ] || return 0
   pgrep -f "$DRILL_TIMER_TAG\$" 2>/dev/null | while IFS= read -r p; do
     [ -n "$p" ] || continue
-    case "$(ps -p "$p" -o comm= 2>/dev/null)" in
-      python*|*/python*) printf '%s\n' "$p" ;;
-    esac
+    while IFS= read -r q; do
+      [ "$p" = "$q" ] && { printf '%s\n' "$p"; break; }
+    done <<EOF
+$mine
+EOF
   done
 }
 
