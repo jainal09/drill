@@ -76,12 +76,21 @@ if [ "$(uname -s)" = "Darwin" ]; then
   # Compared by VALUE, not by exit code. What the register cases need is a real
   # round trip -- write it, read the same thing back -- and that is the property
   # to assert, not that two processes happened to exit 0.
-  FIND_WAS="$(timeout 5 pbpaste -pboard find 2>/dev/null)"
-  if printf x | timeout 5 pbcopy -pboard find >/dev/null 2>&1 &&
-     [ "$(timeout 5 pbpaste -pboard find 2>/dev/null)" = x ]; then
-    CLIP="pbcopy"
+  #
+  # The save GATES the write, and that is the whole safety argument: never put
+  # something on a board you have not proved you can put back. Reading first is
+  # free, because a failed read is already the answer -- if pbs will not answer
+  # a paste, it is not a working provider, CLIP stays empty, and we have written
+  # nothing. Restoring unconditionally instead had a real hole: pbpaste hitting
+  # the 5s timeout on a merely SLOW pbs leaves FIND_WAS empty, and the restore
+  # then clears a find term that was there all along.
+  if FIND_WAS="$(timeout 5 pbpaste -pboard find 2>/dev/null)"; then
+    if printf x | timeout 5 pbcopy -pboard find >/dev/null 2>&1 &&
+       [ "$(timeout 5 pbpaste -pboard find 2>/dev/null)" = x ]; then
+      CLIP="pbcopy"
+    fi
+    printf %s "$FIND_WAS" | timeout 5 pbcopy -pboard find >/dev/null 2>&1
   fi
-  printf %s "$FIND_WAS" | timeout 5 pbcopy -pboard find >/dev/null 2>&1
 else
   # Mirror what nvimrc.lua accepts, or this warns when the editor is fine and
   # stays quiet when it is not. Two things that means: the same provider list,
