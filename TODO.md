@@ -80,7 +80,7 @@ Landed as a stack of PRs, one per checkpoint, each based on the previous.
       diagnosed it as `--remote-send` collapsing `<C-S-q>` to `<C-q>`. **That
       was wrong.** `--remote-send` speaks nvim's key *notation*, not terminal
       bytes, so no encoding happens and CSI-u never enters into it — measured
-      under a real pty, socket mode reports `ok Ctrl+Shift+Q prompts (CSI-u)`.
+      under a real pty, socket mode reports `ok Ctrl+Shift+Q reaches its mapping`.
       What I had actually measured was a screenless nvim, where `confirm()`
       cannot draw and returns instantly. The skip built on that reasoning is
       reverted; the check runs unconditionally, as it always did.

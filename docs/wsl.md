@@ -95,10 +95,12 @@ So on WSL, `nvimrc.lua` also binds what actually arrives:
 | | |
 |---|---|
 | insert mode, `Ctrl+Q` (and therefore `Ctrl+Shift+Q`) | the quit prompt |
+| terminal mode — i.e. inside the REPL | the quit prompt, so you can leave without pressing `Ctrl+E` first |
 | normal mode, `Ctrl+Q` | still visual block, untouched |
 
-Two consequences. `Ctrl+Q` on its own quits from insert too — the prompt
-defaults to **Cancel**, so a slip costs one keystroke. And insert-mode
+Two consequences. `Ctrl+Q` on its own quits from insert *and from inside the
+interpreter* too — the prompt defaults to **Cancel**, so a slip costs one
+keystroke. And insert-mode
 `Ctrl+Q` is no longer vanilla vim's literal-insert; in a Python scratchpad where
 `Ctrl+V` is already paste, that was close to unreachable anyway.
 
