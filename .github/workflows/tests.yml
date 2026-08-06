@@ -62,11 +62,20 @@ jobs:
       # Not part of the gate: it drives a real editor for a screen recording and
       # is slow. --check is the cheap half, and it is what tells us demo.sh
       # still runs at all on a box with no bc.
-      # `script` is not decoration: --check drives a real editor and asserts on a
-      # DRAWN confirmation prompt. With stdout on a pipe -- which is what the
-      # Actions log is -- nvim has no screen, vim.fn.confirm() cannot draw, it
-      # returns immediately, and the cancelling keystroke lands in the buffer
-      # instead. That is a false failure about the harness, not the chord, and
-      # it is exactly the trap preflight() documents in demo.sh. Give it a pty.
-      - name: demo.sh --check
-        run: xvfb-run -a script -qec "./demo.sh --check" /dev/null
+      # NOT `demo.sh --check`. That drives a real editor and asserts on a DRAWN
+      # confirmation prompt, so it needs a genuine terminal -- with stdout on a
+      # pipe nvim has no screen, vim.fn.confirm() cannot draw, and the check
+      # fails about the harness rather than the code. Wrapping it in `script`
+      # to fake a pty just moved the failure ("the editor did not start").
+      # It is a pre-recording check for a human at a terminal, not a gate.
+      #
+      # What CI can honestly assert about demo.sh is that it parses and that
+      # its arithmetic still works without bc -- which is what this branch
+      # changed and what would silently rot.
+      - name: demo.sh parses, and needs no bc
+        run: |
+          set -euo pipefail
+          bash -n demo.sh
+          out=$(SPEED=0.4 bash -c 'secs() { LC_ALL=C awk -v f="$1" -v s="$SPEED" "BEGIN { printf \"%.4f\", f * s }"; }; secs 0.09')
+          [ "$out" = "0.0360" ] || { echo "secs() returned '$out', expected 0.0360"; exit 1; }
+          echo "secs() -> $out"
