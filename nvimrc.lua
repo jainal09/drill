@@ -1271,9 +1271,13 @@ map({ "n", "i", "t" }, "<C-S-q>", quit_drill, S)
 -- on such a terminal the user presses Ctrl+Shift+Q, exactly as documented, and
 -- <C-q> is what nvim is handed.
 --
--- INSERT ONLY, and gated on WSL, because both halves cost something:
+-- INSERT AND TERMINAL, never normal, and gated on WSL -- each part costs
+-- something:
 --   * normal mode keeps Ctrl+Q as visual block (CONFLICT 2) -- it is the only
 --     way to ask for one, and drill's premise is that you are in insert anyway.
+--   * terminal mode is included on purpose: <C-S-q> is bound there so you can
+--     quit without leaving the interpreter first, and a fallback that skipped
+--     it would take that away on the one platform that needs the fallback.
 --   * in insert, vanilla <C-q> is literal-insert, the twin of <C-v>. In a
 --     Python scratchpad where <C-v> is already paste, that is close to
 --     unreachable; a quit prompt that defaults to Cancel is the better use of
