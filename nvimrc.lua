@@ -32,6 +32,113 @@ vim.opt.mouse = "a"                    -- click + select + scroll
 vim.opt.virtualedit = "all"
 vim.opt.clipboard = "unnamedplus"      -- system clipboard (macOS: pbcopy/pbpaste)
 
+-- Are we on WSL? Asked by the clipboard fallback below, and again by the quit
+-- chord much further down. Both uses only ever ADD a fallback, so on macOS and
+-- on a normal Linux box every one of them is dead code.
+local IS_WSL = vim.env.WSL_DISTRO_NAME ~= nil
+if not IS_WSL and vim.fn.filereadable("/proc/version") == 1 then
+  local first = vim.fn.readfile("/proc/version", "", 1)[1] or ""
+  IS_WSL = first:lower():find("microsoft") ~= nil
+end
+
+-- ...and on WSL, something to point it AT. Nvim finds a provider by itself
+-- nearly everywhere -- pbcopy/pbpaste on macOS, wl-copy/xclip/xsel/win32yank on
+-- Linux -- so on a Mac and on any Linux desktop this block does nothing at all.
+--
+-- WSL is where it earns its place. `unnamedplus` with a provider that cannot
+-- reach a display does not fail loudly: Ctrl+C copies nothing, Ctrl+V pastes
+-- nothing, and Ctrl+V over a SELECTION deletes it and puts nothing back, while
+-- "clipboard: No provider" waits as a hit-enter prompt in an editor whose whole
+-- premise is that you never stop typing. clip.exe and powershell.exe are the one
+-- pair still there when interop is on but no display is.
+--
+-- Note WSLg supplies the display SERVER, not these clients: wl-clipboard and
+-- xclip are ordinary packages you still have to install.
+do
+  local function have(cmd) return vim.fn.executable(cmd) == 1 end
+  -- an EXPORTED-BUT-EMPTY DISPLAY="" is a string, so `~= nil` accepts it while
+  -- it names no display at all
+  local function set(v) return v ~= nil and v ~= "" end
+
+  -- The nominal native provider, by name only.
+  local native = nil
+  for _, c in ipairs({ "pbcopy", "wl-copy", "xclip", "xsel",
+                       "win32yank.exe", "lemonade", "doitclient" }) do
+    if have(c) and (c ~= "wl-copy"  or set(vim.env.WAYLAND_DISPLAY))
+               and (c ~= "xclip" and c ~= "xsel" or set(vim.env.DISPLAY)) then
+      native = c
+      break
+    end
+  end
+
+  -- A display NAME is not a display. DISPLAY can be exported and stale, point
+  -- at a server that is gone, or fail authorization -- and then xclip is
+  -- "installed and usable" by every cheap test and still cannot move a byte.
+  -- Three reviewers flagged that gap, so ask the display itself.
+  --
+  -- WSL only, because that is the only place with something to fall back TO,
+  -- and it READS rather than writes: xclip forks a daemon to own a selection it
+  -- has been given, so a write probe leaves a process behind and can block a
+  -- pipeline waiting on it. A read answers the question and exits.
+  --
+  -- Two things this has to get right, both learned from review:
+  --
+  --   TIMEOUT. This runs synchronously at config load. `wl-paste` can sit
+  --   waiting on a compositor that never answers, and without a bound that is
+  --   not a slow editor, it is an editor that never opens. `timeout` is always
+  --   present here -- this branch is WSL-only.
+  --
+  --   AN EMPTY CLIPBOARD IS NOT A DEAD DISPLAY. Both exit non-zero, so the
+  --   exit code alone would demote a perfectly good provider on a fresh
+  --   session that simply has nothing copied yet. Measured messages: a dead X
+  --   display says "Can't open display", a missing compositor says "Failed to
+  --   connect to a Wayland server", and an empty-but-live selection says
+  --   nothing of the kind. Match on that, and treat anything unrecognised as
+  --   ALIVE -- the cost of being wrong that way is one slow paste, where the
+  --   other way is a silently dead clipboard.
+  local function display_answers()
+    local probe = ({ ["wl-copy"] = { "wl-paste", "--no-newline" },
+                     ["xclip"]   = { "xclip", "-o", "-selection", "clipboard" },
+                     ["xsel"]    = { "xsel", "--clipboard", "--output" } })[native]
+    if not probe then return true end            -- nothing display-bound to ask
+    local cmd = { "timeout", "2" }
+    for _, a in ipairs(probe) do cmd[#cmd + 1] = a end
+    local out = (vim.fn.system(cmd) or ""):lower()
+    if vim.v.shell_error == 0 then return true end
+    if vim.v.shell_error == 124 then return false end        -- timeout: no answer
+    return not (out:find("can't open display") or out:find("cannot open display")
+             or out:find("failed to connect")  or out:find("unable to open display"))
+  end
+
+  -- Leave nvim's own provider alone whenever it can actually work: it gets
+  -- linewise/charwise register semantics right, and reimplementing that here
+  -- got the trailing newline of a linewise yank wrong on the first attempt.
+  -- Only when the display does not answer -- or there is no native tool at all
+  -- -- take over with the pair that is always there under interop.
+  if IS_WSL and have("clip.exe") and have("powershell.exe")
+     and not (native and display_answers()) then
+    -- Get-Clipboard returns CRLF and nvim splits on \n only, so paste has to be
+    -- a Lua function: nothing built in strips the \r that would otherwise end
+    -- every pasted line.
+    local function from_windows()
+      local out = vim.fn.systemlist({ "powershell.exe", "-NoProfile", "-NoLogo",
+                                      "-Command", "Get-Clipboard" })
+      if vim.v.shell_error ~= 0 then return {} end
+      for i, line in ipairs(out) do out[i] = (line:gsub("\r$", "")) end
+      return out
+    end
+    vim.g.clipboard = {
+      name = "wsl-interop",
+      copy  = { ["+"] = "clip.exe",   ["*"] = "clip.exe" },
+      paste = { ["+"] = from_windows, ["*"] = from_windows },
+      -- every paste really asks Windows. A cache would answer with what YOU
+      -- last copied and silently ignore anything copied in a browser, which is
+      -- most of what this register is for.
+      cache_enabled = 0,
+    }
+  end
+end
+
 -- One cursor everywhere you type. Nvim's default is a vertical bar in insert
 -- (i-ci-ve:ver25) but a BLOCK in terminal mode, so the caret changed shape every
 -- time <C-e> moved you between the file and the interpreter -- in an editor whose
@@ -860,8 +967,54 @@ local RUN_H = 15
 -- the config deliberately knows nothing about DRILL_HOME; absent (an install
 -- that predates the shim), runs are plain python3, exactly as before.
 local preload = vim.fn.fnamemodify(debug.getinfo(1, "S").source:sub(2), ":p:h") .. "/preload.py"
+
+-- Which python3, spelled out only when the bare name would be the WRONG one.
+-- WSL appends the Windows PATH, so on a box with no Linux python installed
+-- `python3` resolves to the Store App Execution Alias under
+-- /mnt/c/.../WindowsApps -- a zero-byte stub that opens the Microsoft Store
+-- instead of running your file. It would do that inside a 15-row split, which
+-- makes both Ctrl+R and Ctrl+E look broken for a reason nothing on screen
+-- explains. Anything under /mnt is a Windows binary, so keep walking PATH.
+-- Everywhere else this stays the literal string "python3", exactly as before.
+-- exepath returns "" when there is no python3 on PATH at all, and "" matches no
+-- prefix -- so a bare-name fallthrough would hand Ctrl+R and Ctrl+E a command
+-- that cannot start, with none of the warning below. Absent and Store-alias are
+-- the same outcome here: no usable interpreter.
+local python = "python3"
+local found_py = vim.fn.exepath("python3")
+if found_py == "" or found_py:match("^/mnt/") then
+  local found = nil
+  for dir in (vim.env.PATH or ""):gmatch("[^:]+") do
+    if not dir:match("^/mnt/") and vim.fn.executable(dir .. "/python3") == 1 then
+      found = dir .. "/python3"
+      break
+    end
+  end
+  if found then
+    python = vim.fn.shellescape(found)
+  else
+    -- Nothing to fall back TO. Leaving the bare name here would hand Ctrl+R and
+    -- Ctrl+E the Store alias anyway, and they would open the Microsoft Store in
+    -- a 15-row split with nothing on screen explaining it. install.sh refuses
+    -- to proceed in this state, but nvim can be started without it, so say the
+    -- true thing once rather than fail mutely at the first keypress.
+    python = nil
+    vim.schedule(function()
+      vim.notify("drill: no usable python3 on PATH"
+        .. (found_py == "" and " (none found)"
+                            or " (`python3` is the Windows Store alias)")
+        .. " -- Ctrl+R and Ctrl+E are disabled. "
+        .. (IS_WSL and "Install a Linux python3 (apt install python3); the "
+                    .. "Windows one cannot run these files."
+                    or "Put a python3 on your PATH."),
+        vim.log.levels.WARN)
+    end)
+  end
+end
+
 local function py_cmd(flags, f)
-  local cmd = "python3" .. flags .. " "
+  if not python then return nil end   -- no usable interpreter; callers bail
+  local cmd = python .. flags .. " "
   if vim.fn.filereadable(preload) == 1 then
     cmd = cmd .. vim.fn.shellescape(preload) .. " "
   end
@@ -924,19 +1077,23 @@ local function run_once()
   if out_win and vim.api.nvim_win_is_valid(out_win) then
     vim.api.nvim_win_close(out_win, true)              -- reuse, don't stack splits
   end
-  vim.cmd("botright " .. RUN_H .. "split | terminal " .. py_cmd("", f))
+  local cmd = py_cmd("", f)
+  if not cmd then return end                           -- the warning already said why
+  vim.cmd("botright " .. RUN_H .. "split | terminal " .. cmd)
   out_win = vim.api.nvim_get_current_win()
 end
 
 -- start python on the current code, reusing the split if one is already there.
 local function repl_spawn(f, tick)
+  local cmd = py_cmd(" -i", f)
+  if not cmd then return end                           -- the warning already said why
   local stale = repl_buf
   if shows(repl_win, stale) then
     vim.api.nvim_set_current_win(repl_win)             -- swap in place, no flicker
   else
     vim.cmd("botright " .. RUN_H .. "split")
   end
-  vim.cmd("terminal " .. py_cmd(" -i", f))
+  vim.cmd("terminal " .. cmd)
   repl_win, repl_buf = vim.api.nvim_get_current_win(), vim.api.nvim_get_current_buf()
   repl_file, repl_tick = f, tick
   if stale and stale ~= repl_buf and vim.api.nvim_buf_is_valid(stale) then
