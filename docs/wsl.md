@@ -142,7 +142,7 @@ Ctrl+click are both just clicks, not vim surprises.
 ## Running the tests
 
 ```sh
-./tests/run.sh      # 556 cases
+./tests/run.sh      # 558 cases
 ```
 
 Needs a clipboard provider on PATH; `run.sh` warns up front if there is none,

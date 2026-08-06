@@ -84,7 +84,7 @@ Landed as a stack of PRs, one per checkpoint, each based on the previous.
       What I had actually measured was a screenless nvim, where `confirm()`
       cannot draw and returns instantly. The skip built on that reasoning is
       reverted; the check runs unconditionally, as it always did.
-      *Gate: full `./tests/run.sh` 556/556; `./demo.sh --check` clean.*
+      *Gate: full `./tests/run.sh` 558/558; `./demo.sh --check` clean.*
 - [x] **5 — `wsl/05-ci-docs`** · `.github/workflows/tests.yml` running the suite
       on `ubuntu-latest` under `xvfb` with `xclip`, so the clipboard cases are
       real; `docs/wsl.md`; requirement lines in `README.md`, `KEYS.md`,

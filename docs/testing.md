@@ -5,13 +5,13 @@ and diffing what comes out. Nothing is mocked: if a case passes, that keystroke
 does that thing in this config.
 
 ```sh
-./tests/run.sh            # 556 cases; exit 0 only if all pass
+./tests/run.sh            # 558 cases; exit 0 only if all pass
 ./tests/run.sh sel_       # just the select-mode cases
 ```
 
 | Suite | Cases | What it drives |
 |---|---|---|
-| `suite_options.sh` | 84 | config invariants no key-driven test can see: completion off at every source, zero LSP clients, no swap/backup/undo files, the cursor shape in both panes, and every mapping registered in the modes it claims — including that `Ctrl+/` is *not* bound in terminal mode and `Ctrl+C` is *not* bound in normal or terminal, so SIGINT still reaches a running program |
+| `suite_options.sh` | 86 | config invariants no key-driven test can see: completion off at every source, zero LSP clients, no swap/backup/undo files, the cursor shape in both panes, and every mapping registered in the modes it claims — including that `Ctrl+/` is *not* bound in terminal mode and `Ctrl+C` is *not* bound in normal or terminal, so SIGINT still reaches a running program |
 | `suite_config.sh` | 30 | headless nvim: shift+arrow selection, `Tab`/`Shift+Tab`, cut/paste/select-all, undo/redo, `Ctrl+C` copying without losing the selection |
 | `suite_mouse.sh` | 58 | pty: click to caret from every mode, into empty space and past EOF, jitter in both axes, real drags, double-click, Option/Ctrl+click, and clicks between the file and the interpreter |
 | `suite_search.sh` | 36 | `Ctrl+F`, exactly when the highlight and hints appear and go, and the Esc chain — including that it resumes typing at the exact column. Headless **and** pty: the Esc chain cannot be seen headlessly, because feedkeys force-ends Insert as the typeahead drains |
@@ -67,8 +67,18 @@ macOS. `tests/bin/timeout` is that `alarm` shim; `run.sh` puts it on `PATH`
 first, so on Linux it hands over to the real `timeout` rather than shadowing it
 with something weaker.
 
-CI runs the same script on `ubuntu-latest` under `xvfb` with `xclip`, so the
-clipboard cases are real there too — see `.github/workflows/tests.yml`.
+CI runs the same script on **both platforms this project claims** — see
+`.github/workflows/tests.yml`. `ubuntu-latest` under `xvfb` with `xclip`, and
+`macos-latest` with the pasteboard it already has, so the clipboard cases are
+real in both. Both jobs pin the same nvim 0.11.0 by tarball and checksum, so a
+job that goes red is the code and not the editor.
+
+They are not the same run twice. The Linux job covers the branches the WSL port
+added; the macOS job covers the ones they were added around, and is the only
+place `bash` is 3.2, `pgrep`/`ps`/`sed`/`awk` are the BSD ones, and
+`tests/bin/timeout` actually takes its `perl` leg — on Linux the shim always
+finds a real `timeout(1)` and hands over, so that path had never run in CI until
+the macOS job existed.
 
 ## One known flake, on WSL only
 
@@ -81,7 +91,7 @@ signature: **the buffer is correct and `+` reads back empty**.
 They pass when run alone (10/10, 3/3, 3/3 for the three above), and the
 instrumented mapping shows `getregion` returning the right text every time — so
 the selection and the keybinding are fine. What intermittently fails is the
-write to the *system* clipboard under the load of a 556-case run.
+write to the *system* clipboard under the load of a 558-case run.
 
 It is not the provider. It reproduces with `wl-copy` (WSLg's default pick) and
 again with `WAYLAND_DISPLAY` unset to force `xclip`, and in the same run one
