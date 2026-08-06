@@ -10,7 +10,7 @@
 set -euo pipefail
 
 DRILL_HOME="${DRILL_HOME:-$HOME/drill}"
-SRC="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+SRC="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)"
 BEGIN_MARK="# >>> drill >>>"
 END_MARK="# <<< drill <<<"
 ASSUME_YES=0
@@ -289,15 +289,45 @@ fi
 
 # ---- files ------------------------------------------------------------
 mkdir -p "$DRILL_HOME/templates" "$DRILL_HOME/solves" "$DRILL_HOME/scratch"
+# A SEPARATE variable, and that matters. This is only for the identity test
+# below; DRILL_HOME itself must stay exactly as the user configured it, because
+# it is what gets written into the shell rc and printed back to them. Resolving
+# it in place bakes a symlink's CURRENT target into that rc line: point
+# ~/drill at v1, install, later retarget it at v2, and the rc still sources
+# v1 -- which by then may not exist. That would change macOS behaviour too, on
+# a shell path with no OS branch anywhere near it.
+#
+# -P on both sides here because bash's cd/pwd resolve LOGICALLY by default, so
+# a symlinked DRILL_HOME pointing at the clone would compare unequal, the copy
+# loop would run, and `cp a a` would fail on the very case the guard exists to
+# catch.
+DRILL_HOME_REAL="$(cd "$DRILL_HOME" && pwd -P)"
 
+# The README's own instructions are `git clone ...` then `cd drill &&
+# ./install.sh`. Run from your home directory -- which is where people run it --
+# that puts the clone at ~/drill, and ~/drill IS the default DRILL_HOME. Source
+# and destination are then the same directory, and `cp a a` refuses ("are the
+# same file"), which under `set -e` kills the install on the documented path.
+# Installing into the clone is not a mistake; there is simply nothing to copy.
+# Every file has to be THERE either way. Checking this only on the copying path
+# would let an incomplete clone install "successfully" from its own directory
+# and then add a `source .../drill.sh` line for a drill.sh that does not exist,
+# or leave d/dt/ds pointing at a missing nvimrc.lua.
 for f in nvimrc.lua drill.sh preload.py KEYS.md; do
   [ -f "$SRC/$f" ] || bail "missing $f next to install.sh"
-  if [ -f "$DRILL_HOME/$f" ] && ! cmp -s "$SRC/$f" "$DRILL_HOME/$f"; then
-    cp "$DRILL_HOME/$f" "$DRILL_HOME/$f.bak"
-    say "kept your old $f as $f.bak"
-  fi
-  cp "$SRC/$f" "$DRILL_HOME/$f"
 done
+
+if [ "$SRC" = "$DRILL_HOME_REAL" ]; then
+  say "running from $DRILL_HOME itself -- the files are already in place"
+else
+  for f in nvimrc.lua drill.sh preload.py KEYS.md; do
+    if [ -f "$DRILL_HOME/$f" ] && ! cmp -s "$SRC/$f" "$DRILL_HOME/$f"; then
+      cp "$DRILL_HOME/$f" "$DRILL_HOME/$f.bak"
+      say "kept your old $f as $f.bak"
+    fi
+    cp "$SRC/$f" "$DRILL_HOME/$f"
+  done
+fi
 
 # yours to fill -- never clobbered
 [ -e "$DRILL_HOME/cheatsheet.py" ] || : > "$DRILL_HOME/cheatsheet.py"
