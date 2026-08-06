@@ -54,10 +54,14 @@ do
   -- alone would skip the fallback and leave the clipboard as dead as if
   -- nothing were installed at all. Require the display each one actually
   -- needs. pbcopy, win32yank and the network ones need no display.
+  -- ~= nil is not the test: an EXPORTED-BUT-EMPTY DISPLAY="" is a string, so it
+  -- passes a nil check while naming no display at all, and the fallback would
+  -- be skipped for a provider that cannot connect to anything.
+  local function set(v) return v ~= nil and v ~= "" end
   local function usable(cmd)
     if not have(cmd) then return false end
-    if cmd == "wl-copy" then return vim.env.WAYLAND_DISPLAY ~= nil end
-    if cmd == "xclip" or cmd == "xsel" then return vim.env.DISPLAY ~= nil end
+    if cmd == "wl-copy" then return set(vim.env.WAYLAND_DISPLAY) end
+    if cmd == "xclip" or cmd == "xsel" then return set(vim.env.DISPLAY) end
     return true
   end
 
@@ -933,8 +937,13 @@ local preload = vim.fn.fnamemodify(debug.getinfo(1, "S").source:sub(2), ":p:h") 
 -- makes both Ctrl+R and Ctrl+E look broken for a reason nothing on screen
 -- explains. Anything under /mnt is a Windows binary, so keep walking PATH.
 -- Everywhere else this stays the literal string "python3", exactly as before.
+-- exepath returns "" when there is no python3 on PATH at all, and "" matches no
+-- prefix -- so a bare-name fallthrough would hand Ctrl+R and Ctrl+E a command
+-- that cannot start, with none of the warning below. Absent and Store-alias are
+-- the same outcome here: no usable interpreter.
 local python = "python3"
-if vim.fn.exepath("python3"):match("^/mnt/") then
+local found_py = vim.fn.exepath("python3")
+if found_py == "" or found_py:match("^/mnt/") then
   local found = nil
   for dir in (vim.env.PATH or ""):gmatch("[^:]+") do
     if not dir:match("^/mnt/") and vim.fn.executable(dir .. "/python3") == 1 then
@@ -952,9 +961,11 @@ if vim.fn.exepath("python3"):match("^/mnt/") then
     -- true thing once rather than fail mutely at the first keypress.
     python = nil
     vim.schedule(function()
-      vim.notify("drill: no Linux python3 on PATH -- `python3` is the Windows "
-        .. "Store alias, so Ctrl+R and Ctrl+E are disabled. "
-        .. "Install one (see docs/wsl.md).", vim.log.levels.WARN)
+      vim.notify("drill: no usable python3 on PATH"
+        .. (found_py == "" and " (none found)"
+                            or " (`python3` is the Windows Store alias)")
+        .. " -- Ctrl+R and Ctrl+E are disabled. See docs/wsl.md.",
+        vim.log.levels.WARN)
     end)
   end
 end
