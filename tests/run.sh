@@ -41,12 +41,21 @@ if [ "$(uname -s)" != "Darwin" ]; then
   # stays quiet when it is not. Two things that means: the same provider list,
   # and the same display requirement -- an installed xclip with no DISPLAY
   # cannot own a selection, so it is not a provider for this purpose either.
+  # ...and here, unlike in nvimrc.lua, ACTUALLY TRY IT. A display name is not a
+  # display: DISPLAY=:98765 with xclip installed passes every name-based check
+  # and then fails with "Can't open display", producing exactly the register
+  # failures this warning exists to explain while the warning stays silent.
+  # nvimrc.lua cannot afford this probe -- it would be a subprocess on every
+  # editor start -- but run.sh pays it once per suite, before 556 cases.
+  # It writes, because a read cannot tell "no display" from "empty clipboard";
+  # the suite clobbers the clipboard wholesale anyway.
   CLIP=""
   for c in wl-copy xclip xsel win32yank.exe lemonade doitclient; do
     command -v "$c" >/dev/null 2>&1 || continue
     case "$c" in
-      wl-copy)      [ -n "${WAYLAND_DISPLAY:-}" ] || continue ;;
-      xclip|xsel)   [ -n "${DISPLAY:-}" ]         || continue ;;
+      wl-copy) printf x | timeout 5 wl-copy >/dev/null 2>&1 || continue ;;
+      xclip)   printf x | timeout 5 xclip -selection clipboard >/dev/null 2>&1 || continue ;;
+      xsel)    printf x | timeout 5 xsel --clipboard --input >/dev/null 2>&1 || continue ;;
     esac
     CLIP="$c"; break
   done
