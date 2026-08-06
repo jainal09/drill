@@ -1283,9 +1283,14 @@ map({ "n", "i", "t" }, "<C-S-q>", quit_drill, S)
 -- "i" AND "t": <C-S-q> is bound in n/i/t precisely so you can quit from inside
 -- the interpreter without pressing <C-e> first, and a fallback that covered
 -- only insert would take that away on the one platform that needs it. Normal
--- mode is the deliberate omission -- there <C-q> is visual block. python has no
--- use for <C-q> either, and drill.sh's `stty -ixon` is what frees it from XON
--- in the first place.
+-- mode is the deliberate omission -- there <C-q> is visual block, and the only
+-- route to one.
+--
+-- In the interpreter this is not a free key, which the first version of this
+-- comment claimed: readline in emacs mode binds ^Q to quoted-insert, so the
+-- rebind really does take a live feature away. It is a fair trade rather than
+-- a free one -- ^V is bound to the same command in readline, so quoted-insert
+-- is still there. (drill.sh's `stty -ixon` is what frees ^Q from XON at all.)
 if IS_WSL then
   map({ "i", "t" }, "<C-q>", quit_drill, S)
 end
