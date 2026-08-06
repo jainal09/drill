@@ -58,10 +58,12 @@ if [ "$(uname -s)" != "Darwin" ]; then
       xsel)          printf x | timeout 5 xsel --clipboard --input >/dev/null 2>&1 || continue ;;
       win32yank.exe) printf x | timeout 5 win32yank.exe -i >/dev/null 2>&1 || continue ;;
       lemonade)      printf x | timeout 5 lemonade copy >/dev/null 2>&1 || continue ;;
-      # no write command we can run blind, so do not vouch for it -- claiming a
-      # provider works on the strength of its filename is the bug this loop is
-      # here to avoid
-      doitclient)    continue ;;
+      # doitclient and lemonade are network clipboards with no display to
+      # check. lemonade has a write command we can run; doitclient does not, so
+      # it is accepted on its name -- exactly as nvimrc.lua accepts it. Skipping
+      # it instead would print "no clipboard provider" on a box where the editor
+      # works fine, which is the same lie in the other direction.
+      doitclient)    ;;
     esac
     CLIP="$c"; break
   done
