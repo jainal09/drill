@@ -55,8 +55,22 @@ if [ "$(uname -s)" = "Darwin" ]; then
   #
   # Both halves, because the register cases need copy AND paste, and pbpaste is
   # the one that actually reads back from pbs.
-  if printf x | timeout 5 pbcopy >/dev/null 2>&1 &&
-     timeout 5 pbpaste >/dev/null 2>&1; then
+  #
+  # -pboard find, NOT the general pasteboard. macOS has four named pasteboards
+  # served by the same pbs, so `find` proves reachability exactly as well while
+  # leaving whatever you copied alone -- the general one is destroyed later in
+  # the run by the register cases themselves, but only if you actually run
+  # them, and `./tests/run.sh timer` should not cost you your clipboard. The
+  # non-destructive spelling exists here and has no equivalent below: xsel and
+  # wl-copy have no unused selection to borrow (wl-copy offers only clipboard
+  # and primary, and primary is the user's too), so that branch still writes,
+  # as its own comment already owns.
+  #
+  # Saving and restoring the general pasteboard instead would be worse than the
+  # bug: pbpaste yields text, so a round-trip silently flattens an image, RTF or
+  # a file promise to nothing.
+  if printf x | timeout 5 pbcopy -pboard find >/dev/null 2>&1 &&
+     timeout 5 pbpaste -pboard find >/dev/null 2>&1; then
     CLIP="pbcopy"
   fi
 else
