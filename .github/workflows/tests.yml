@@ -76,6 +76,11 @@ jobs:
         run: |
           set -euo pipefail
           bash -n demo.sh
-          out=$(SPEED=0.4 bash -c 'secs() { LC_ALL=C awk -v f="$1" -v s="$SPEED" "BEGIN { printf \"%.4f\", f * s }"; }; secs 0.09')
-          [ "$out" = "0.0360" ] || { echo "secs() returned '$out', expected 0.0360"; exit 1; }
-          echo "secs() -> $out"
+          # Pull the REAL secs() out of demo.sh and run that. A copy of the
+          # function pasted here would pass while the actual one was broken --
+          # a check that cannot fail, which is worse than no check.
+          real=$(sed -n '/^secs() {/p' demo.sh)
+          [ -n "$real" ] || { echo "could not find secs() in demo.sh"; exit 1; }
+          out=$(SPEED=0.4 bash -c "$real"'; secs 0.09')
+          [ "$out" = "0.0360" ] || { echo "demo.sh secs() returned '$out', expected 0.0360"; exit 1; }
+          echo "demo.sh secs() -> $out"
