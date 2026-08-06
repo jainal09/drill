@@ -39,7 +39,10 @@ Landed as a stack of PRs, one per checkpoint, each based on the previous.
       version parse that survives `-dev` strings, and correct nvim install hints
       per platform. (`drill.sh`'s only `apt install` line is for fzf, which has
       no version gate and is not stale — nothing to do there.)
-      *Gate: `install.sh` into a temp `DRILL_HOME`.*
+      *Gate: package-manager detection on this box; `--yes` installs and
+      re-probes; a non-tty run prints the command and runs nothing; the
+      version parse survives `0.10-dev` and a missing `NVIM v` prefix; and
+      the apt hint is withheld when apt's candidate is below 0.9.*
 - [x] **2 — `wsl/02-clipboard`** · `nvimrc.lua`: native provider first, a
       `clip.exe` + `powershell Get-Clipboard` shim only when no *usable*
       provider is found — "usable" being the load-bearing word, since an
@@ -47,7 +50,10 @@ Landed as a stack of PRs, one per checkpoint, each based on the previous.
       anything, and an empty clipboard is not the same as an absent provider;
       and resolve `python3` past the `/mnt/.../WindowsApps` Store alias
       that WSL's PATH interop otherwise hands us.
-      *Gate: `suite_config.sh` clipboard cases green; copy/paste both directions by hand.*
+      *Gate: `suite_config.sh` clipboard cases green; copy/paste both
+      directions by hand; the shim engages with the providers hidden and
+      round-trips with no stray `\r`; and a stub `python3` planted under
+      `/mnt` is walked past, with a healthy PATH left untouched.*
 - [x] **3 — `wsl/03-timer`** · `drill.sh`: `run()` reported success for a
       process that merely launched, so a player that exits non-zero silenced
       the bell fallback too — check the exit code, add a timeout. Extend the
@@ -57,8 +63,11 @@ Landed as a stack of PRs, one per checkpoint, each based on the previous.
       Scope grew once the suite could run here: **`pgrep -f "$TAG"` matches any
       process that merely *mentions* the tag**, so `t` was stopping strangers —
       including the test shell that holds the tag in its own `-c` string, which
-      is why 30 of 36 timer cases failed on Linux before any of this. Confirm
-      each candidate is an interpreter with `ps -o comm=` instead.
+      is why 30 of 36 timer cases failed on Linux before any of this. An
+      executable check and an end-anchor were both tried and both still
+      accepted `python3 train.py --tag drill-timer`; identity finally comes
+      from a marker inside the timer's own source, which is `argv[2]` of the
+      running python and which nothing else carries.
       *Gate: `suite_timer.sh` 36/36 (was 6/36); sound and notification both fire.*
 - [x] **4 — `wsl/04-demo-tests`** · `demo.sh` `bc` → `awk`; `tests/bin/timeout`
       delegates to real GNU `timeout` when one exists instead of shadowing it;
@@ -66,29 +75,44 @@ Landed as a stack of PRs, one per checkpoint, each based on the previous.
       counts failing *suites* rather than summing exit codes — it called 30
       broken timer cases "2 FAILING CASE(S)", small enough to read as a flake.
 
-      Also: `demo.sh --check` failed its `Ctrl+Shift+Q` case on every Linux box
-      and told you to record with `--keys socket`, which is the mode it was
-      already in. `--remote-send` collapses `<C-S-q>` to `<C-q>`, whose
-      literal-insert then eats the cancelling `c` — the exact Shift-drop that
-      made CSI-u necessary. Socket mode cannot ask that question, so it skips
-      it and says why.
+      Also, and recorded here because the wrong version of it shipped first:
+      `demo.sh --check` appeared to fail its `Ctrl+Shift+Q` case, and I
+      diagnosed it as `--remote-send` collapsing `<C-S-q>` to `<C-q>`. **That
+      was wrong.** `--remote-send` speaks nvim's key *notation*, not terminal
+      bytes, so no encoding happens and CSI-u never enters into it — measured
+      under a real pty, socket mode reports `ok Ctrl+Shift+Q reaches its mapping`.
+      What I had actually measured was a screenless nvim, where `confirm()`
+      cannot draw and returns instantly. The skip built on that reasoning is
+      reverted; the check runs unconditionally, as it always did.
       *Gate: full `./tests/run.sh` 556/556; `./demo.sh --check` clean.*
 - [x] **5 — `wsl/05-ci-docs`** · `.github/workflows/tests.yml` running the suite
       on `ubuntu-latest` under `xvfb` with `xclip`, so the clipboard cases are
       real; `docs/wsl.md`; requirement lines in `README.md`, `KEYS.md`,
       `docs/testing.md`.
-      *Gate: CI green on the PR itself.*
+      *Gate: CI green on the PR itself — and green for the right reason:
+      the log must show the pinned nvim sha256 verified, `ALL SUITES
+      PASSED`, and no `no clipboard provider` warning, which is what proves
+      `xvfb` + `xclip` made the register cases real rather than skipped.*
 
-### Still to be measured by a human
+### Measured by a human, and then fixed
 
-`Ctrl+Shift+Q` only exists when the terminal negotiates CSI-u. Windows Terminal
-≥1.22 does; older builds use win32-input-mode and the chord never fires, leaving
-`:qa!` as the only way out. Nothing automated can settle this: `suite_quit.sh`
-synthesises `ESC[113;6u` straight onto the pty, so it passes on a terminal where
-the chord could never arrive, and `demo.sh --check` cannot send CSI-u over
-`--remote-send` at all. **Press it in Windows Terminal.** If the confirmation
-appears, your build speaks CSI-u; if nothing happens, update Windows Terminal or
-use `:qa!`. Written up in [docs/wsl.md](docs/wsl.md).
+`Ctrl+Shift+Q` did not work on WSL. Nothing automated could have told us:
+`suite_quit.sh` writes `ESC[113;6u` straight onto the pty, so it passes on a
+terminal where the chord could never arrive, and `demo.sh --check` reaches the
+mapping over `--remote-send`, which consumes nvim's key *notation* and never
+exercises a terminal encoding at all. Neither one presses a key. It took a
+human.
+
+Windows Terminal 1.24 is new enough to speak CSI-u and does not negotiate it
+with nvim, so the chord arrives as the legacy `0x11` — plain `<C-q>` — and the
+`<C-S-q>` mapping is never reached. On WSL the config now also binds `<C-q>` in
+insert and terminal mode, which is what actually arrives.
+
+**Normal mode is deliberately not covered.** There `<C-q>` is visual block and
+is the only route to one, since `<C-v>` is paste — so binding it to the prompt
+would leave no way to ask for a block, while quitting still has `:qa!`. From
+normal mode on such a terminal the chord gives you a block; press `i` first.
+Off WSL none of this applies. Written up in [docs/wsl.md](docs/wsl.md).
 
 ### Not in scope, deliberately
 

@@ -1258,3 +1258,47 @@ local function quit_drill()
 end
 
 map({ "n", "i", "t" }, "<C-S-q>", quit_drill, S)
+
+-- ...and the same chord again, for terminals that cannot spell it.
+--
+-- Everything above assumes CSI-u. Windows Terminal 1.24 is new enough to speak
+-- it and does not negotiate it with nvim, so Ctrl+Shift+Q arrives as the plain
+-- legacy 0x11 -- <C-q> -- and the mapping above is simply never reached. The
+-- documented way out of the editor does not exist on WSL, which leaves `:qa!`:
+-- the one thing this whole section was written to stop being necessary.
+--
+-- So bind what actually ARRIVES. This is not a second, different key to learn:
+-- on such a terminal the user presses Ctrl+Shift+Q, exactly as documented, and
+-- <C-q> is what nvim is handed.
+--
+-- INSERT AND TERMINAL, never normal, and gated on WSL. Each of those three
+-- choices costs something:
+--
+--   * normal mode keeps <C-q> as visual block (CONFLICT 2). It is the ONLY
+--     route to a block here, since <C-v> in normal mode is paste -- so binding
+--     the prompt there would leave no way to ask for one, while quitting still
+--     has :qa!. From normal mode on such a terminal the chord gives you a
+--     block; press i first.
+--
+--   * terminal mode IS included, deliberately: <C-S-q> is bound in n/i/t so
+--     you can quit from inside the interpreter without pressing <C-e> first,
+--     and a fallback that skipped it would take that away on the one platform
+--     that needs a fallback at all. It is not a free key there either --
+--     readline in emacs mode binds ^Q to quoted-insert -- but ^V is bound to
+--     the same command, so quoted-insert survives. A fair trade, not a free
+--     one. (drill.sh's `stty -ixon` is what frees ^Q from XON in the first
+--     place.)
+--
+--   * in insert, vanilla <C-q> is literal-insert, the twin of <C-v>. In a
+--     Python scratchpad where <C-v> is already paste that is close to
+--     unreachable, and a quit prompt defaulting to Cancel is the better use of
+--     the key -- but it IS a real vim behaviour, so nowhere but WSL loses it.
+--
+-- The gate is IS_WSL, NOT the protocol: there is no runtime signal for whether
+-- CSI-u was negotiated, so a WSL session whose terminal DOES speak it gets this
+-- binding too, and bare <C-q> quits from insert there as well. Off WSL --
+-- macOS, and Linux desktops with or without CSI-u -- the block is skipped and
+-- nothing changes.
+if IS_WSL then
+  map({ "i", "t" }, "<C-q>", quit_drill, S)
+end

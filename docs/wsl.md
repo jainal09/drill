@@ -81,22 +81,51 @@ anything.
 
 ## `Ctrl+Shift+Q`
 
-`Ctrl+Shift+Q` only exists as a distinct key when the terminal negotiates
-CSI-u. In the legacy encoding Shift is dropped from a control chord, so
-`Ctrl+Q` and `Ctrl+Shift+Q` are the same byte and nothing downstream can tell
-them apart.
+Press it. It works — but not by the route it uses on a Mac, and that is worth
+knowing if you ever wonder why `Ctrl+Q` also quits here.
 
-**Measured: Windows Terminal 1.24 does not negotiate CSI-u with nvim**, so the
-chord arrives as plain `<C-q>`. Updating Windows Terminal does not fix that —
-1.24 is already new enough to speak the protocol and simply does not. The WSL
-`<C-q>` binding that makes the chord work lands with the quit checkpoint later
-in this stack; until then the way out is `:qa!`.
+`Ctrl+Shift+Q` only exists as a distinct key when the terminal negotiates CSI-u.
+In the legacy encoding Shift is dropped from a control chord, so `Ctrl+Q` and
+`Ctrl+Shift+Q` are the same byte — `0x11` — and nothing downstream can tell them
+apart. **Windows Terminal 1.24 does not negotiate CSI-u with nvim**, so the
+chord arrives as plain `<C-q>` and the `<C-S-q>` mapping is never reached.
 
-**Nothing automated can check this.** `suite_quit.sh` writes `ESC[113;6u`
-straight onto the pty, so it passes on a terminal where the chord could never
-arrive, and `demo.sh --check` reaches the mapping over `--remote-send`, which
-speaks nvim key notation rather than terminal bytes — neither one is pressing a
-real key. That is why this needed a human.
+So on WSL, `nvimrc.lua` also binds what actually arrives:
+
+| | |
+|---|---|
+| insert mode, `Ctrl+Q` (and therefore `Ctrl+Shift+Q`) | the quit prompt |
+| terminal mode — i.e. inside the REPL | the quit prompt, so you can leave without pressing `Ctrl+E` first |
+| normal mode, `Ctrl+Q` | still visual block, untouched |
+
+Two consequences. `Ctrl+Q` on its own quits from insert *and from inside the
+interpreter* too — the prompt defaults to **Cancel**, so a slip costs one
+keystroke. And insert-mode
+`Ctrl+Q` is no longer vanilla vim's literal-insert; in a Python scratchpad where
+`Ctrl+V` is already paste, that was close to unreachable anyway.
+
+Gated on **WSL**, not on the protocol — there is no runtime signal for whether
+CSI-u was negotiated (`vim.g.termfeatures` is `nil` even in a real TUI on 0.12),
+so the binding is installed on every WSL session. If yours *does* speak CSI-u,
+`Ctrl+Shift+Q` reaches its own mapping as normal and you additionally get bare
+`Ctrl+Q` quitting from insert, losing literal-insert there. Off WSL none of it
+applies and `Ctrl+Q` keeps every meaning it had.
+
+**Normal mode is the gap.** `Ctrl+Q` in normal mode is visual block, and it is
+the only way to reach one — `Ctrl+V` there is paste. So on a terminal without
+CSI-u, pressing `Ctrl+Shift+Q` from normal mode gives you a visual block, not
+the prompt. That is a deliberate trade: quitting from normal mode still has
+`:qa!`, while visual block would have nothing left. If you are in normal mode
+and want the prompt, press `i` first, or use `:qa!`.
+
+**Nothing automated can check the CSI-u half.** `suite_quit.sh` writes
+`ESC[113;6u` straight onto the pty, so it passes on a terminal where the chord
+could never arrive; `demo.sh --check` cannot answer it either, and says so
+rather than guessing — `--remote-send` consumes nvim's key *notation*, so it
+delivers `<C-S-q>` to the mapping and never exercises the terminal encoding at
+all. (An earlier version of this page said it collapsed the chord. It does not;
+that claim was measured against a screenless nvim and is retracted.) Which is
+why this needed a human to press it.
 
 ## Keep `DRILL_HOME` off `/mnt/c`
 

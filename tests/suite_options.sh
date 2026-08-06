@@ -131,6 +131,25 @@ end
 ok("quit_did_not_steal_ctrl_q",
    vim.fn.maparg("<C-q>", "n"):lower() == "<c-v>", vim.fn.maparg("<C-q>", "n"))
 
+-- The WSL quit fallback, which nothing else here reaches: on a terminal with no
+-- CSI-u the chord arrives as plain <C-q>, so the config binds it in insert AND
+-- terminal mode, and deliberately NOT in normal, where it is the only route to
+-- a visual block. Asserted from whichever side this machine is on -- a WSL box
+-- proves the bindings exist, and CI (ubuntu-latest, no "microsoft" in
+-- /proc/version) proves they do not leak onto a normal Linux desktop. Between
+-- the two runs both halves are covered; on one machine only one half can be.
+local on_wsl = vim.env.WSL_DISTRO_NAME ~= nil
+if not on_wsl and vim.fn.filereadable("/proc/version") == 1 then
+  local first = vim.fn.readfile("/proc/version", "", 1)[1] or ""
+  on_wsl = first:lower():find("microsoft") ~= nil
+end
+for _, m in ipairs({ "i", "t" }) do
+  local bound = vim.fn.maparg("<C-q>", m, false, true)
+  local has = type(bound) == "table" and bound.callback ~= nil
+  ok("wsl_quit_fallback_" .. m, has == on_wsl,
+     ("on_wsl=%s bound=%s"):format(tostring(on_wsl), tostring(has)))
+end
+
 -- Ctrl+C must stay unmapped in normal and terminal so SIGINT still lands
 ok("ctrlc_free_in_normal", vim.fn.maparg("<C-c>", "n") == "", vim.fn.maparg("<C-c>", "n"))
 ok("ctrlc_free_in_terminal", vim.fn.maparg("<C-c>", "t") == "", vim.fn.maparg("<C-c>", "t"))
