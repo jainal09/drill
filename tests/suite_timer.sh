@@ -40,12 +40,28 @@ ok() {
   fi
 }
 
+# Asked inside the test shell, `pgrep -f "$TAG"` is the WRONG question: the tag
+# is in that shell's own -c string, so it matches the shell itself and every
+# check below would be answering about the wrong process. Filter to actual
+# interpreters, the way drill.sh does -- but spelled out here rather than
+# calling _drill_timer_pids, so the suite is not checking drill.sh against
+# itself.
+_TIMER_PIDS=$(cat <<'PRE'
+timer_pids() {
+  pgrep -f "$DRILL_TIMER_TAG" 2>/dev/null | while IFS= read -r p; do
+    case "$(ps -p "$p" -o comm= 2>/dev/null)" in python*|*/python*) echo "$p" ;; esac
+  done
+}
+PRE
+)
+
 # run <shell> <script>  -- source drill.sh under that shell and run the script
 run() {
   local sh="$1" script="$2"
   DRILL_TIMER_TAG="$TAG" "$sh" -c "
     . '$DRILL_SH' >/dev/null 2>&1
     DRILL_TIMER_TAG='$TAG'
+    $_TIMER_PIDS
     $script
   " 2>&1
 }
@@ -73,10 +89,10 @@ for SH in bash zsh; do
   # ---- t -k <id> kills exactly that timer ------------------------------
   OUT="$(run "$SH" '
     t >/dev/null 2>&1; sleep 0.4
-    id=$(pgrep -f "'"$TAG"'" | head -1)
+    id=$(timer_pids | head -1)
     t -k "$id"
     sleep 0.3
-    pgrep -f "'"$TAG"'" >/dev/null && echo STILL_RUNNING || echo GONE')"
+    timer_pids | grep -q . && echo STILL_RUNNING || echo GONE')"
   case "$OUT" in *GONE*) ok "${SH}_kill_by_id_stops_it" 1 "" ;;
                  *) ok "${SH}_kill_by_id_stops_it" 0 "$OUT" ;; esac
   pkill -f "$TAG" 2>/dev/null; sleep 0.2
@@ -86,7 +102,7 @@ for SH in bash zsh; do
     t >/dev/null 2>&1; sleep 0.4
     t -k
     sleep 0.3
-    pgrep -f "'"$TAG"'" >/dev/null && echo STILL_RUNNING || echo GONE')"
+    timer_pids | grep -q . && echo STILL_RUNNING || echo GONE')"
   case "$OUT" in *GONE*) ok "${SH}_bare_kill_stops_it" 1 "" ;;
                  *) ok "${SH}_bare_kill_stops_it" 0 "$OUT" ;; esac
   pkill -f "$TAG" 2>/dev/null; sleep 0.2
@@ -100,7 +116,7 @@ for SH in bash zsh; do
     t >/dev/null 2>&1; sleep 0.4
     t -k $$ ; echo "rc=$?"
     sleep 0.2
-    pgrep -f "'"$TAG"'" >/dev/null && echo TIMER_SURVIVED || echo TIMER_DIED')"
+    timer_pids | grep -q . && echo TIMER_SURVIVED || echo TIMER_DIED')"
   case "$OUT" in *"rc=1"*) ok "${SH}_wrong_id_returns_failure" 1 "" ;;
                  *) ok "${SH}_wrong_id_returns_failure" 0 "$OUT" ;; esac
   case "$OUT" in *"is not a running drill timer"*) ok "${SH}_wrong_id_says_why" 1 "" ;;
@@ -123,7 +139,7 @@ for SH in bash zsh; do
   OUT="$(run "$SH" '
     t >/dev/null 2>&1; sleep 0.3
     t >/dev/null 2>&1; sleep 0.3
-    pgrep -f "'"$TAG"'" | wc -l | tr -d " "')"
+    timer_pids | wc -l | tr -d " "')"
   case "$OUT" in *1*) ok "${SH}_restart_replaces_not_stacks" 1 "" ;;
                  *) ok "${SH}_restart_replaces_not_stacks" 0 "count=$OUT" ;; esac
   pkill -f "$TAG" 2>/dev/null; sleep 0.2
@@ -133,7 +149,7 @@ for SH in bash zsh; do
     t10 >/dev/null 2>&1; sleep 0.4
     t10 -k
     sleep 0.3
-    pgrep -f "'"$TAG"'" >/dev/null && echo STILL_RUNNING || echo GONE')"
+    timer_pids | grep -q . && echo STILL_RUNNING || echo GONE')"
   case "$OUT" in *GONE*) ok "${SH}_t10_takes_the_same_flags" 1 "" ;;
                  *) ok "${SH}_t10_takes_the_same_flags" 0 "$OUT" ;; esac
   pkill -f "$TAG" 2>/dev/null; sleep 0.2
