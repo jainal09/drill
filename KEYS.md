@@ -230,8 +230,11 @@ byte. With CSI-u they are different keys — which is what lets this coexist wit
 `Ctrl+Q` for visual block.
 
 **On a terminal that speaks no CSI-u the chord arrives as plain `Ctrl+Q`**, so
-on WSL — where Windows Terminal does not negotiate CSI-u — insert-mode and
-terminal-mode `Ctrl+Q` are bound to the same prompt. From insert, which is where
+on WSL insert-mode and terminal-mode `Ctrl+Q` are bound to the same prompt. The
+binding is gated on **being on WSL**, not on the protocol — there is no runtime
+way to ask whether CSI-u was negotiated — so a WSL session whose terminal *does*
+speak CSI-u gets it too, and bare `Ctrl+Q` quits from insert there as well even
+though `Ctrl+Shift+Q` arrives as its own key. From insert, which is where
 this editor keeps you, you press the documented chord and it works. Two costs:
 plain `Ctrl+Q` then quits from insert as well (Cancel is still the default) and
 stops being vanilla vim's literal-insert.

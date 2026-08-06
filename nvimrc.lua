@@ -1278,8 +1278,11 @@ map({ "n", "i", "t" }, "<C-S-q>", quit_drill, S)
 --     Python scratchpad where <C-v> is already paste, that is close to
 --     unreachable; a quit prompt that defaults to Cancel is the better use of
 --     the key. But it IS a real vim behaviour, so nowhere but WSL loses it.
--- On macOS, and on any Linux terminal that does negotiate CSI-u, this whole
--- block is skipped and nothing changes.
+-- Gated on IS_WSL, NOT on the protocol: there is no runtime signal for whether
+-- CSI-u was negotiated, so a WSL session whose terminal DOES speak it gets this
+-- binding too, and bare <C-q> quits from insert there as well. Off WSL --
+-- macOS, and Linux desktops with or without CSI-u -- the block is skipped and
+-- nothing changes.
 -- "i" AND "t": <C-S-q> is bound in n/i/t precisely so you can quit from inside
 -- the interpreter without pressing <C-e> first, and a fallback that covered
 -- only insert would take that away on the one platform that needs it. Normal
