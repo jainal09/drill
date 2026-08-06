@@ -172,7 +172,12 @@ check_deps() {
     - neovim -- the editor itself. $NVIM_BY_HAND"; fi
     HARD=1
   else
-    cand="$(nvim --version | head -1 | sed 's/^NVIM v//')"
+    # sed alone, NOT `head -1 | sed`. head exits after the first line and closes
+    # the pipe; if nvim is still writing it takes SIGPIPE, the pipeline status
+    # becomes 141, and `set -o pipefail` + `set -e` abort the installer with no
+    # message at all. nvim --version is smaller than the pipe buffer so the race
+    # is unlikely -- but the failure mode is a silent abort, so do not race it.
+    cand="$(nvim --version | sed -n '1s/^NVIM v//p')"
     # DIGITS only. A nightly prints 0.11.0-dev-1234+gabcdef, and `-dev` inside
     # an arithmetic test is a fatal error under `set -e` -- the version check
     # would abort the install instead of passing it.
