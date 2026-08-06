@@ -650,7 +650,11 @@ preflight() {
   local before; before="$(nvx 'getline(1)')"
   key CS-q; pause 1.1
   key c;    pause 0.8
-  ck "Ctrl+Shift+Q prompts (CSI-u)" "$(nvx 'getline(1)')" "$before"
+  # NOT "(CSI-u)". --remote-send consumes nvim key notation and never emits
+  # ESC[113;6u, so this proves the MAPPING is reachable and says nothing about
+  # what a physical terminal would deliver. Naming it after the protocol
+  # claimed a guarantee this check cannot make.
+  ck "Ctrl+Shift+Q reaches its mapping" "$(nvx 'getline(1)')" "$before"
   ck "...and Cancel came back alive" "$(editor_alive && echo yes || echo no)" "yes"
 
   nv '<Cmd>qa!<CR>'
