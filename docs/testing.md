@@ -88,10 +88,16 @@ Roughly one full-suite run in three **on WSL**, one of the six cases in
 and there is no reason the other three are immune. It is always the same
 signature: **the buffer is correct and `+` reads back empty**.
 
-They pass when run alone (10/10, 3/3, 3/3 for the three above), and the
-instrumented mapping shows `getregion` returning the right text every time — so
-the selection and the keybinding are fine. What intermittently fails is the
-write to the *system* clipboard under the load of a 558-case run.
+The instrumented mapping shows `getregion` returning the right text every time,
+so the selection and the keybinding are fine. What intermittently fails is the
+write to the *system* clipboard.
+
+**Load makes it worse but is not the cause.** This page used to say these cases
+pass when run alone, on 10/10 and 3/3 samples. Bigger samples say otherwise:
+`ctrlc_visual_charwise_exclusive`, run by itself in a loop, failed **2 times in
+30** with the same signature. So isolation lowers the rate by roughly a factor
+of five — it does not reach zero, and a single solo pass proves less than it
+looks like it does.
 
 It is not the provider. It reproduces with `wl-copy` (WSLg's default pick) and
 again with `WAYLAND_DISPLAY` unset to force `xclip`, and in the same run one
@@ -101,16 +107,22 @@ single `xclip` under `xvfb` is evidently steadier than a WSLg session.
 
 It is deliberately not papered over. A retry would hide a real clipboard
 regression, and giving these cases a stub provider would break the one rule the
-suite has: nothing here mocks anything. If you see this signature — buffer right, `+` empty — re-run that single case
-before believing it. For example:
+suite has: nothing here mocks anything. If you see this signature — buffer
+right, `+` empty — re-run that single case **several times** before believing
+it. Once is not enough, for the reason above:
 
 ```sh
-./tests/run_test.sh --name check --content 'aa\nbb\ncc' \
-  --keys '<S-Down><S-Down><C-c>Z' --expect 'Zcc' --expect-reg '+=aa
+for i in 1 2 3 4 5; do
+  ./tests/run_test.sh --name "check$i" --content 'aa\nbb\ncc' \
+    --keys '<S-Down><S-Down><C-c>Z' --expect 'Zcc' --expect-reg '+=aa
 bb'
+done
 ```
 
-If it passes alone, you saw the flake. If it fails alone, you have a real bug.
+Read it as a rate, not a verdict. **Five passes** and you saw the flake.
+**Five failures** and you have a real bug. One failure in five is the flake
+again — at 2-in-30 you should expect to meet it eventually, and treating that
+as a regression will send you hunting for a bug that is not there.
 
 ## Diagnostics
 
