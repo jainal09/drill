@@ -92,12 +92,25 @@ The instrumented mapping shows `getregion` returning the right text every time,
 so the selection and the keybinding are fine. What intermittently fails is the
 write to the *system* clipboard.
 
-**Load makes it worse but is not the cause.** This page used to say these cases
-pass when run alone, on 10/10 and 3/3 samples. Bigger samples say otherwise:
-`ctrlc_visual_charwise_exclusive`, run by itself in a loop, failed **2 times in
-30** with the same signature. So isolation lowers the rate by roughly a factor
-of five — it does not reach zero, and a single solo pass proves less than it
-looks like it does.
+**Running a case alone does not make it less likely to flake — it just gives
+you fewer draws.** This page used to say these cases pass in isolation, on
+10/10 and 3/3 samples, and explain the full-run failures as clipboard writes
+buckling under load. Neither survives a bigger sample.
+`ctrlc_visual_charwise_exclusive`, alone in a loop, failed **2 times in 30**.
+
+At that per-case rate a full run needs no load effect to explain it, because a
+run makes the same bet six times:
+
+| | |
+|---|---|
+| per-case rate, measured in isolation | 2/30 = **6.7%** |
+| so P(at least one of the 6 register cases fails) | 1 − (1 − 0.067)⁶ = **34%** |
+| observed full-run rate | **~1 in 3** |
+
+Those agree, which means there is nothing left for "load" to account for. The
+old 10/10 result was not evidence of immunity either: at 6.7%, ten clean runs
+happen **50%** of the time regardless, and three clean runs **81%** of the
+time. The sample was a coin flip being read as a proof.
 
 It is not the provider. It reproduces with `wl-copy` (WSLg's default pick) and
 again with `WAYLAND_DISPLAY` unset to force `xclip`, and in the same run one
@@ -119,10 +132,17 @@ bb'
 done
 ```
 
-Read it as a rate, not a verdict. **Five passes** and you saw the flake.
-**Five failures** and you have a real bug. One failure in five is the flake
-again — at 2-in-30 you should expect to meet it eventually, and treating that
-as a regression will send you hunting for a bug that is not there.
+**Consistency is the signal, not any single result.** A real bug fails every
+time; this flake fails a small fraction of the time. So five failures out of
+five is a bug — at 6.7% that is a one-in-a-million coincidence. One or two
+failures out of five is this flake, and treating it as a regression will send
+you hunting something that is not there.
+
+Five passes is the weakest of the three readings, and worth knowing why: five
+clean runs happen **71%** of the time even when the flake is present, so they
+are consistent with it rather than evidence against it. Combined with the
+signature — buffer right, `+` empty — that is still the sensible read. Just do
+not mistake it for a clean bill of health.
 
 ## Diagnostics
 
