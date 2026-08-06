@@ -79,15 +79,35 @@ do
   -- WSL only, because that is the only place with something to fall back TO,
   -- and it READS rather than writes: xclip forks a daemon to own a selection it
   -- has been given, so a write probe leaves a process behind and can block a
-  -- pipeline waiting on it. A read answers the only question here -- does the
-  -- display respond -- and exits. Measured at ~3ms.
+  -- pipeline waiting on it. A read answers the question and exits.
+  --
+  -- Two things this has to get right, both learned from review:
+  --
+  --   TIMEOUT. This runs synchronously at config load. `wl-paste` can sit
+  --   waiting on a compositor that never answers, and without a bound that is
+  --   not a slow editor, it is an editor that never opens. `timeout` is always
+  --   present here -- this branch is WSL-only.
+  --
+  --   AN EMPTY CLIPBOARD IS NOT A DEAD DISPLAY. Both exit non-zero, so the
+  --   exit code alone would demote a perfectly good provider on a fresh
+  --   session that simply has nothing copied yet. Measured messages: a dead X
+  --   display says "Can't open display", a missing compositor says "Failed to
+  --   connect to a Wayland server", and an empty-but-live selection says
+  --   nothing of the kind. Match on that, and treat anything unrecognised as
+  --   ALIVE -- the cost of being wrong that way is one slow paste, where the
+  --   other way is a silently dead clipboard.
   local function display_answers()
     local probe = ({ ["wl-copy"] = { "wl-paste", "--no-newline" },
                      ["xclip"]   = { "xclip", "-o", "-selection", "clipboard" },
                      ["xsel"]    = { "xsel", "--clipboard", "--output" } })[native]
     if not probe then return true end            -- nothing display-bound to ask
-    vim.fn.system(probe)
-    return vim.v.shell_error == 0
+    local cmd = { "timeout", "2" }
+    for _, a in ipairs(probe) do cmd[#cmd + 1] = a end
+    local out = (vim.fn.system(cmd) or ""):lower()
+    if vim.v.shell_error == 0 then return true end
+    if vim.v.shell_error == 124 then return false end        -- timeout: no answer
+    return not (out:find("can't open display") or out:find("cannot open display")
+             or out:find("failed to connect")  or out:find("unable to open display"))
   end
 
   -- Leave nvim's own provider alone whenever it can actually work: it gets
@@ -983,8 +1003,10 @@ if found_py == "" or found_py:match("^/mnt/") then
       vim.notify("drill: no usable python3 on PATH"
         .. (found_py == "" and " (none found)"
                             or " (`python3` is the Windows Store alias)")
-        .. " -- Ctrl+R and Ctrl+E are disabled. Install a Linux python3"
-        .. " (apt install python3); the Windows one cannot run these files.",
+        .. " -- Ctrl+R and Ctrl+E are disabled. "
+        .. (IS_WSL and "Install a Linux python3 (apt install python3); the "
+                    .. "Windows one cannot run these files."
+                    or "Put a python3 on your PATH."),
         vim.log.levels.WARN)
     end)
   end
