@@ -39,7 +39,10 @@ Landed as a stack of PRs, one per checkpoint, each based on the previous.
       version parse that survives `-dev` strings, and correct nvim install hints
       per platform. (`drill.sh`'s only `apt install` line is for fzf, which has
       no version gate and is not stale — nothing to do there.)
-      *Gate: `install.sh` into a temp `DRILL_HOME`.*
+      *Gate: package-manager detection on this box; `--yes` installs and
+      re-probes; a non-tty run prints the command and runs nothing; the
+      version parse survives `0.10-dev` and a missing `NVIM v` prefix; and
+      the apt hint is withheld when apt's candidate is below 0.9.*
 - [x] **2 — `wsl/02-clipboard`** · `nvimrc.lua`: native provider first, a
       `clip.exe` + `powershell Get-Clipboard` shim only when no *usable*
       provider is found — "usable" being the load-bearing word, since an
@@ -47,7 +50,10 @@ Landed as a stack of PRs, one per checkpoint, each based on the previous.
       anything, and an empty clipboard is not the same as an absent provider;
       and resolve `python3` past the `/mnt/.../WindowsApps` Store alias
       that WSL's PATH interop otherwise hands us.
-      *Gate: `suite_config.sh` clipboard cases green; copy/paste both directions by hand.*
+      *Gate: `suite_config.sh` clipboard cases green; copy/paste both
+      directions by hand; the shim engages with the providers hidden and
+      round-trips with no stray `\r`; and a stub `python3` planted under
+      `/mnt` is walked past, with a healthy PATH left untouched.*
 - [x] **3 — `wsl/03-timer`** · `drill.sh`: `run()` reported success for a
       process that merely launched, so a player that exits non-zero silenced
       the bell fallback too — check the exit code, add a timeout. Extend the
@@ -77,7 +83,10 @@ Landed as a stack of PRs, one per checkpoint, each based on the previous.
       on `ubuntu-latest` under `xvfb` with `xclip`, so the clipboard cases are
       real; `docs/wsl.md`; requirement lines in `README.md`, `KEYS.md`,
       `docs/testing.md`.
-      *Gate: CI green on the PR itself.*
+      *Gate: CI green on the PR itself — and green for the right reason:
+      the log must show the pinned nvim sha256 verified, `ALL SUITES
+      PASSED`, and no `no clipboard provider` warning, which is what proves
+      `xvfb` + `xclip` made the register cases real rather than skipped.*
 
 ### Measured by a human, and then fixed
 
