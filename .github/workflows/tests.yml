@@ -20,6 +20,11 @@ jobs:
       # pinned to a commit, not the v4 tag: a tag is mutable, so the runner
       # could execute different checkout code with no diff in this repo
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          # checkout leaves GITHUB_TOKEN in .git/config by default, and every
+          # step after this one runs code from the PR branch -- including a
+          # fork's. Nothing here pushes, so the token has no job to do.
+          persist-credentials: false
 
       # NOT apt. Ubuntu's neovim is old enough that install.sh's own 0.9 gate
       # rejects it -- 22.04 ships 0.6.1 -- so the tarball, pinned, is the only

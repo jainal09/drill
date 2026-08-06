@@ -133,8 +133,9 @@ at the end of your shell rc (backed up first). `./install.sh --uninstall`
 removes it. `DRILL_HOME=~/practice ./install.sh` puts it elsewhere.
 
 Requires Neovim 0.9+, Python 3, fzf, and a clipboard provider — `pbcopy` is
-already there on macOS, and on Linux and WSL that means `wl-clipboard` or
-`xclip`. macOS, Linux and WSL; bash and zsh. `install.sh` checks for all of it,
+already there on macOS; elsewhere any of `wl-clipboard`, `xclip`, `xsel` or
+`win32yank`, and on WSL with none of them drill falls back to `clip.exe` and
+PowerShell on its own. macOS, Linux and WSL; bash and zsh. `install.sh` checks for all of it,
 prints the exact install command for your package manager, and asks before
 running it. On WSL, read [docs/wsl.md](docs/wsl.md) — a few things there are
 installed and still do not work, and it says which. Your practice files

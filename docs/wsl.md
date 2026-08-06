@@ -16,8 +16,11 @@ installed *and* WSLg is running, it is wired straight to the Windows clipboard
 in both directions — copy in drill, paste in a browser, and back — and nothing
 in drill overrides that.
 
-The fallback only appears when that probe comes up **empty**: WSL with no WSLg,
-no X server, and no `win32yank.exe`. `clipboard=unnamedplus` with no provider
+The fallback appears whenever no supported provider is **usable** — which is
+not the same as absent. That includes WSL with no WSLg, no X server and no
+`win32yank.exe`; it also includes a WSLg session where the client packages were
+never installed, or where `DISPLAY` is set but the server behind it does not
+answer. `clipboard=unnamedplus` with no provider
 does not fail loudly — it makes `Ctrl+C` copy nothing, `Ctrl+V` paste nothing,
 and **`Ctrl+V` over a selection delete the selection and put nothing back**. So
 on that box `nvimrc.lua` wires the register to `clip.exe` for copy and
@@ -37,7 +40,7 @@ If you would rather have the fast native path on a display-less box, put
 This is where WSL is least like Linux, and both surprises are the same shape: a
 tool that is **installed and does not work**.
 
-```
+```console
 $ pw-play /usr/share/sounds/freedesktop/stereo/complete.oga
 remote error: id=3 seq:7 res:-2 (No such file or directory): no node available
 exit 1
@@ -64,7 +67,7 @@ PowerShell toast wins the notification chain. If you run a notification daemon,
 The toast returning success means Windows *accepted* it. Whether it appears on
 screen is still up to Focus Assist and your notification settings.
 
-## Which python3
+## Which `python3`
 
 WSL appends the Windows PATH to yours. On a box with no Linux python installed,
 `python3` resolves to the Store App Execution Alias under
