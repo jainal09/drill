@@ -46,10 +46,22 @@ ok() {
 # interpreters, the way drill.sh does -- but spelled out here rather than
 # calling _drill_timer_pids, so the suite is not checking drill.sh against
 # itself.
+#
+# The leading ( in "(python*|*/python*)" is LOAD-BEARING -- do not tidy it away.
+# This heredoc lives inside $( ), and bash 3.2 (which is what /bin/bash is on
+# macOS) finds the end of a command substitution by scanning for a balancing
+# paren rather than by parsing. A case pattern contributes a lone ')', so the
+# scan ended on the pattern below, the rest of the line was read as a command,
+# and the whole suite died before its first case with
+#
+#   suite_timer.sh: line 52: syntax error near unexpected token `;;'
+#
+# The optional open paren POSIX allows on a case pattern balances the count.
+# Nothing changes for bash 4+, zsh, or the meaning of the pattern.
 _TIMER_PIDS=$(cat <<'PRE'
 timer_pids() {
   pgrep -f "$DRILL_TIMER_TAG" 2>/dev/null | while IFS= read -r p; do
-    case "$(ps -p "$p" -o comm= 2>/dev/null)" in python*|*/python*) echo "$p" ;; esac
+    case "$(ps -p "$p" -o comm= 2>/dev/null)" in (python*|*/python*) echo "$p" ;; esac
   done
 }
 PRE

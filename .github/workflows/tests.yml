@@ -1,9 +1,20 @@
 name: tests
 
 # The gate, run for real. tests/run.sh drives the actual config in headless
-# nvim and on real ptys, so this is the same 556 cases you get locally -- not a
+# nvim and on real ptys, so this is the same suite you get locally -- not a
 # lint. It exists because "works on Linux" was a claim in the README that
 # nothing checked, and on a stock Ubuntu box it was not true.
+#
+# Two platforms, because both are claimed and neither can stand in for the
+# other. They are not the same run with a different logo:
+#
+#   linux  the OS branches added by the WSL port -- the clipboard fallbacks,
+#          the sound and notification chains, the /mnt python3 rejection
+#   macos  the branches those were added AROUND, which until now were only
+#          ever "unchanged by construction". It is also the only job that
+#          reaches bash 3.2, the BSD pgrep/ps/sed/awk, and the perl alarm leg
+#          of tests/bin/timeout -- on Linux the shim always finds a real
+#          timeout(1) and hands over, so that leg has never run in CI at all.
 #
 # Every PR, and main. NOT every push: a branch with a PR open would then run the
 # whole 6-minute gate twice for one commit, once per event. A feature branch
@@ -89,6 +100,70 @@ jobs:
           # Pull the REAL secs() out of demo.sh and run that. A copy of the
           # function pasted here would pass while the actual one was broken --
           # a check that cannot fail, which is worse than no check.
+          real=$(sed -n '/^secs() {/p' demo.sh)
+          [ -n "$real" ] || { echo "could not find secs() in demo.sh"; exit 1; }
+          out=$(SPEED=0.4 bash -c "$real"'; secs 0.09')
+          [ "$out" = "0.0360" ] || { echo "demo.sh secs() returned '$out', expected 0.0360"; exit 1; }
+          echo "demo.sh secs() -> $out"
+
+  macos:
+    # arm64. Not a matrix with an Intel leg: the Intel runner labels are on
+    # GitHub's deprecation path, so it would be a check that needs re-pinning
+    # rather than one that keeps working, and nothing here is arch-sensitive.
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
+
+      # The same v0.11.0 the linux job pins, from the same release, checked
+      # against the same shasum.txt. brew would have been one line, but then
+      # "which nvim did the gate run against" has a different answer every week
+      # and a macOS-only failure could be the config or could be the editor.
+      - name: neovim
+        run: |
+          set -euo pipefail
+          curl -fsSL -o nvim.tar.gz \
+            https://github.com/neovim/neovim/releases/download/v0.11.0/nvim-macos-arm64.tar.gz
+          echo "20055d322e80194350ee0e47f1ba5a8016d1cdbe7e283d62f882f640326e18a7  nvim.tar.gz" | shasum -a 256 -c -
+          # curl does not set com.apple.quarantine, so this is belt and braces
+          # -- but it is what neovim's own install notes say to do, and a
+          # Gatekeeper refusal would surface as "nvim: bad interpreter".
+          xattr -c nvim.tar.gz || true
+          sudo tar xzf nvim.tar.gz -C /opt
+          sudo ln -sf /opt/nvim-macos-arm64/bin/nvim /usr/local/bin/nvim
+          nvim --version | head -1
+
+      # fzf only. Everything else the gate needs is already the operating
+      # system, and each omission is deliberate:
+      #
+      #   zsh, perl, python3, pgrep   in the base image (python3 is ASSERTED
+      #                               below rather than installed, exactly as
+      #                               the linux job does it)
+      #   clipboard                   pbcopy/pbpaste ARE macOS. Whether they
+      #                               work in a runner's session is a separate
+      #                               question, and tests/run.sh now probes it
+      #   xvfb                        Quartz needs no display server from us
+      #   coreutils                   would install gtimeout, not timeout, so
+      #                               tests/bin/timeout would not find it
+      #                               anyway -- and taking the perl leg is the
+      #                               entire point of running here
+      - name: deps
+        run: brew install fzf
+
+      - name: the gate
+        run: |
+          command -v python3 >/dev/null || { echo "no python3 on the runner"; exit 1; }
+          ./tests/run.sh
+
+      # Same check as the linux job, and this is the run of it that matters:
+      # secs() exists to drop bc, and sed/awk/bash here are the BSD and 3.2
+      # ones. An awk expression that only GNU awk accepts passes on ubuntu and
+      # fails on the machine the demo is actually recorded on.
+      - name: demo.sh parses, and needs no bc
+        run: |
+          set -euo pipefail
+          bash -n demo.sh
           real=$(sed -n '/^secs() {/p' demo.sh)
           [ -n "$real" ] || { echo "could not find secs() in demo.sh"; exit 1; }
           out=$(SPEED=0.4 bash -c "$real"'; secs 0.09')

@@ -14,15 +14,24 @@
 #
 #  Requires: nvim 0.9+, zsh (the timer suite runs drill.sh under bash AND
 #  zsh -- they disagree about word splitting), python3 (the mouse suite needs a
-#  pty; headless nvim has no screen grid to click on), and a clipboard provider
-#  -- wl-copy/xclip/xsel/win32yank, or clip.exe on WSL -- because several cases
-#  assert the real '+' register. perl is needed only where there is no
+#  pty; headless nvim has no screen grid to click on), and a WORKING clipboard
+#  provider -- pbcopy on macOS, wl-copy/xclip/xsel/win32yank elsewhere, or
+#  clip.exe on WSL -- because several cases assert the real '+' register. It is
+#  probed, not assumed: pbcopy over ssh and xclip with no display are both
+#  installed and both useless. perl is needed only where there is no
 #  timeout(1) at all, i.e. macOS; everywhere else bin/timeout hands over to the
 #  real one. See NOTES.md for why the harness is shaped the way it is.
 # ============================================================================
 set -uo pipefail
 DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 FILTER="${1:-}"
+
+# Same PATH prefix every suite sets for itself, hoisted here because the
+# clipboard preflight below bounds its probes with `timeout` and macOS has no
+# timeout(1) -- without this the probe would fail as "command not found" on the
+# one platform whose branch was added to be probed. On Linux bin/timeout finds
+# the real one and hands over, so nothing about this run changes there.
+PATH="$DIR/bin:$PATH"; export PATH
 
 export DRILL_CONFIG="${DRILL_CONFIG:-$(cd "$DIR/.." && pwd)/nvimrc.lua}"
 
@@ -34,9 +43,55 @@ command -v nvim >/dev/null || { echo "run.sh: nvim not on PATH" >&2; exit 2; }
 # The config sets clipboard=unnamedplus, and several cases in suite_config.sh
 # assert the REAL '+' register. With no provider those fail for a reason that
 # has nothing to do with the keybinding under test, and read as a regression in
-# the mapping. Say it once, up front, instead. macOS always has pbcopy, so this
-# is silent there.
-if [ "$(uname -s)" != "Darwin" ]; then
+# the mapping. Say it once, up front, instead.
+CLIP=""
+if [ "$(uname -s)" = "Darwin" ]; then
+  # pbcopy IS macOS -- it cannot be missing, which is why this used to skip the
+  # whole preflight and say so. But present is not working: the pasteboard lives
+  # in a per-session pbs, so over ssh or on a CI runner pbcopy can be right there
+  # on PATH and still have nothing to talk to. That is the same mistake the
+  # xclip branch below already stopped making ("a display name is not a
+  # display"), so make it once, in one shape, on both platforms.
+  #
+  # Both halves, because the register cases need copy AND paste, and pbpaste is
+  # the one that actually reads back from pbs.
+  #
+  # -pboard find, NOT the general pasteboard. macOS has four named pasteboards
+  # served by the same pbs, so `find` proves reachability exactly as well while
+  # leaving whatever you copied alone -- the general one is destroyed later in
+  # the run by the register cases themselves, but only if you actually run
+  # them, and `./tests/run.sh timer` should not cost you your clipboard. The
+  # non-destructive spelling exists here and has no equivalent below: xsel and
+  # wl-copy have no unused selection to borrow (wl-copy offers only clipboard
+  # and primary, and primary is the user's too), so that branch still writes,
+  # as its own comment already owns.
+  #
+  # Saving and restoring the GENERAL pasteboard instead would be worse than the
+  # bug: pbpaste yields text, so a round-trip silently flattens an image, RTF or
+  # a file promise to nothing. On the find board that objection does not apply --
+  # it holds the system find string, which is text by definition -- so this one
+  # IS put back, and the probe costs you nothing at all. (Worst case a trailing
+  # newline: $(...) strips them. That is a search term, not your data.)
+  #
+  # Compared by VALUE, not by exit code. What the register cases need is a real
+  # round trip -- write it, read the same thing back -- and that is the property
+  # to assert, not that two processes happened to exit 0.
+  #
+  # The save GATES the write, and that is the whole safety argument: never put
+  # something on a board you have not proved you can put back. Reading first is
+  # free, because a failed read is already the answer -- if pbs will not answer
+  # a paste, it is not a working provider, CLIP stays empty, and we have written
+  # nothing. Restoring unconditionally instead had a real hole: pbpaste hitting
+  # the 5s timeout on a merely SLOW pbs leaves FIND_WAS empty, and the restore
+  # then clears a find term that was there all along.
+  if FIND_WAS="$(timeout 5 pbpaste -pboard find 2>/dev/null)"; then
+    if printf x | timeout 5 pbcopy -pboard find >/dev/null 2>&1 &&
+       [ "$(timeout 5 pbpaste -pboard find 2>/dev/null)" = x ]; then
+      CLIP="pbcopy"
+    fi
+    printf %s "$FIND_WAS" | timeout 5 pbcopy -pboard find >/dev/null 2>&1
+  fi
+else
   # Mirror what nvimrc.lua accepts, or this warns when the editor is fine and
   # stays quiet when it is not. Two things that means: the same provider list,
   # and the same display requirement -- an installed xclip with no DISPLAY
@@ -46,10 +101,9 @@ if [ "$(uname -s)" != "Darwin" ]; then
   # and then fails with "Can't open display", producing exactly the register
   # failures this warning exists to explain while the warning stays silent.
   # nvimrc.lua cannot afford this probe -- it would be a subprocess on every
-  # editor start -- but run.sh pays it once per suite, before 556 cases.
+  # editor start -- but run.sh pays it once per suite, before the whole gate.
   # It writes, because a read cannot tell "no display" from "empty clipboard";
   # the suite clobbers the clipboard wholesale anyway.
-  CLIP=""
   for c in wl-copy xclip xsel win32yank.exe lemonade doitclient; do
     command -v "$c" >/dev/null 2>&1 || continue
     case "$c" in
@@ -77,12 +131,20 @@ if [ "$(uname -s)" != "Darwin" ]; then
      timeout 15 powershell.exe -NoProfile -NoLogo -Command Get-Clipboard >/dev/null 2>&1; then
     CLIP="clip.exe"
   fi
-  if [ -z "$CLIP" ]; then
-    echo "run.sh: WARNING -- no clipboard provider on PATH."
-    echo "        The cases asserting register '+' will fail for that alone."
+fi
+
+if [ -z "$CLIP" ]; then
+  echo "run.sh: WARNING -- no working clipboard provider."
+  echo "        The cases asserting register '+' will fail for that alone."
+  if [ "$(uname -s)" = "Darwin" ]; then
+    # Nothing to install. A Mac in this state has no pasteboard server to
+    # reach, which is a property of the session, not of the machine.
+    echo "        pbcopy/pbpaste are installed but did not answer -- no user"
+    echo "        session (ssh, or a CI runner) is the usual reason."
+  else
     echo "        apt install wl-clipboard xclip   (see docs/wsl.md on WSL)"
-    echo
   fi
+  echo
 fi
 
 echo "config: $DRILL_CONFIG"

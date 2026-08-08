@@ -5,13 +5,13 @@ and diffing what comes out. Nothing is mocked: if a case passes, that keystroke
 does that thing in this config.
 
 ```sh
-./tests/run.sh            # 556 cases; exit 0 only if all pass
+./tests/run.sh            # 558 cases; exit 0 only if all pass
 ./tests/run.sh sel_       # just the select-mode cases
 ```
 
 | Suite | Cases | What it drives |
 |---|---|---|
-| `suite_options.sh` | 84 | config invariants no key-driven test can see: completion off at every source, zero LSP clients, no swap/backup/undo files, the cursor shape in both panes, and every mapping registered in the modes it claims — including that `Ctrl+/` is *not* bound in terminal mode and `Ctrl+C` is *not* bound in normal or terminal, so SIGINT still reaches a running program |
+| `suite_options.sh` | 86 | config invariants no key-driven test can see: completion off at every source, zero LSP clients, no swap/backup/undo files, the cursor shape in both panes, and every mapping registered in the modes it claims — including that `Ctrl+/` is *not* bound in terminal mode and `Ctrl+C` is *not* bound in normal or terminal, so SIGINT still reaches a running program |
 | `suite_config.sh` | 30 | headless nvim: shift+arrow selection, `Tab`/`Shift+Tab`, cut/paste/select-all, undo/redo, `Ctrl+C` copying without losing the selection |
 | `suite_mouse.sh` | 58 | pty: click to caret from every mode, into empty space and past EOF, jitter in both axes, real drags, double-click, Option/Ctrl+click, and clicks between the file and the interpreter |
 | `suite_search.sh` | 36 | `Ctrl+F`, exactly when the highlight and hints appear and go, and the Esc chain — including that it resumes typing at the exact column. Headless **and** pty: the Esc chain cannot be seen headlessly, because feedkeys force-ends Insert as the typeahead drains |
@@ -67,8 +67,18 @@ macOS. `tests/bin/timeout` is that `alarm` shim; `run.sh` puts it on `PATH`
 first, so on Linux it hands over to the real `timeout` rather than shadowing it
 with something weaker.
 
-CI runs the same script on `ubuntu-latest` under `xvfb` with `xclip`, so the
-clipboard cases are real there too — see `.github/workflows/tests.yml`.
+CI runs the same script on **both platforms this project claims** — see
+`.github/workflows/tests.yml`. `ubuntu-latest` under `xvfb` with `xclip`, and
+`macos-latest` with the pasteboard it already has, so the clipboard cases are
+real in both. Both jobs pin the same nvim 0.11.0 by tarball and checksum, so a
+job that goes red is the code and not the editor.
+
+They are not the same run twice. The Linux job covers the branches the WSL port
+added; the macOS job covers the ones they were added around, and is the only
+place `bash` is 3.2, `pgrep`/`ps`/`sed`/`awk` are the BSD ones, and
+`tests/bin/timeout` actually takes its `perl` leg — on Linux the shim always
+finds a real `timeout(1)` and hands over, so that path had never run in CI until
+the macOS job existed.
 
 ## One known flake, on WSL only
 
@@ -78,10 +88,29 @@ Roughly one full-suite run in three **on WSL**, one of the six cases in
 and there is no reason the other three are immune. It is always the same
 signature: **the buffer is correct and `+` reads back empty**.
 
-They pass when run alone (10/10, 3/3, 3/3 for the three above), and the
-instrumented mapping shows `getregion` returning the right text every time — so
-the selection and the keybinding are fine. What intermittently fails is the
-write to the *system* clipboard under the load of a 556-case run.
+The instrumented mapping shows `getregion` returning the right text every time,
+so the selection and the keybinding are fine. What intermittently fails is the
+write to the *system* clipboard.
+
+**Running a case alone does not make it less likely to flake — it just gives
+you fewer draws.** This page used to say these cases pass in isolation, on
+10/10 and 3/3 samples, and explain the full-run failures as clipboard writes
+buckling under load. Neither survives a bigger sample.
+`ctrlc_visual_charwise_exclusive`, alone in a loop, failed **2 times in 30**.
+
+At that per-case rate a full run needs no load effect to explain it, because a
+run makes the same bet six times:
+
+| | |
+|---|---|
+| per-case rate, measured in isolation | 2/30 = **6.7%** |
+| so P(at least one of the 6 register cases fails) | 1 − (1 − 0.067)⁶ = **34%** |
+| observed full-run rate | **~1 in 3** |
+
+Those agree, which means there is nothing left for "load" to account for. The
+old 10/10 result was not evidence of immunity either: at 6.7%, ten clean runs
+happen **50%** of the time regardless, and three clean runs **81%** of the
+time. The sample was a coin flip being read as a proof.
 
 It is not the provider. It reproduces with `wl-copy` (WSLg's default pick) and
 again with `WAYLAND_DISPLAY` unset to force `xclip`, and in the same run one
@@ -91,16 +120,29 @@ single `xclip` under `xvfb` is evidently steadier than a WSLg session.
 
 It is deliberately not papered over. A retry would hide a real clipboard
 regression, and giving these cases a stub provider would break the one rule the
-suite has: nothing here mocks anything. If you see this signature — buffer right, `+` empty — re-run that single case
-before believing it. For example:
+suite has: nothing here mocks anything. If you see this signature — buffer
+right, `+` empty — re-run that single case **several times** before believing
+it. Once is not enough, for the reason above:
 
 ```sh
-./tests/run_test.sh --name check --content 'aa\nbb\ncc' \
-  --keys '<S-Down><S-Down><C-c>Z' --expect 'Zcc' --expect-reg '+=aa
+for i in 1 2 3 4 5; do
+  ./tests/run_test.sh --name "check$i" --content 'aa\nbb\ncc' \
+    --keys '<S-Down><S-Down><C-c>Z' --expect 'Zcc' --expect-reg '+=aa
 bb'
+done
 ```
 
-If it passes alone, you saw the flake. If it fails alone, you have a real bug.
+**Consistency is the signal, not any single result.** A real bug fails every
+time; this flake fails a small fraction of the time. So five failures out of
+five is a bug — at 6.7% that is a one-in-a-million coincidence. One or two
+failures out of five is this flake, and treating it as a regression will send
+you hunting something that is not there.
+
+Five passes is the weakest of the three readings, and worth knowing why: five
+clean runs happen **71%** of the time even when the flake is present, so they
+are consistent with it rather than evidence against it. Combined with the
+signature — buffer right, `+` empty — that is still the sensible read. Just do
+not mistake it for a clean bill of health.
 
 ## Diagnostics
 
