@@ -182,6 +182,12 @@ instead, it closes itself the moment you leave it. What it will not do is close
 a program that is still running: `Ctrl+R` on a script that calls `input()` puts
 you at its prompt, and that window stays until the program is done with you.
 
+**The split is yours to resize.** Drag the statusline between the file and the
+interpreter (the mouse is on) and you come up typing on the other side of the
+drag, not stranded in Normal mode. The height you set sticks for the rest of
+the session — `Ctrl+E` hides and re-shows at *your* size — and a fresh start
+is back to the default 15 rows.
+
 `Ctrl+R` and `Ctrl+E` work mid-typing with no Esc first, which is why they're
 preferred over `F5`/`F6` — macOS also claims those for dictation and focus.
 

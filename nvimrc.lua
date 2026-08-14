@@ -822,6 +822,45 @@ end
 -- ---------------------------------------------------------------------------
 -- Click anywhere and carry on typing  --  <LeftRelease>
 --
+-- CONFLICT 7: `:startinsert` is IGNORED when it runs inside a mapping that was
+-- invoked from insert mode -- nvim restores the mapping's original mode on the
+-- way out and clobbers it. Since <C-e> is pressed mid-typing, every insert has
+-- to be deferred past the end of the mapping. That is what vim.schedule buys.
+-- (Defined here, above the mouse section, because a drag on the run split's
+-- statusline needs it too -- see sep_drag_t below.)
+local function type_here()
+  vim.schedule(function()
+    if vim.bo.buftype == "terminal" then
+      -- jobwait(...,0) == -1 means still running. Entering terminal mode on a
+      -- FINISHED process is a trap: the next key just closes the window.
+      local id = vim.b.terminal_job_id
+      if id and vim.fn.jobwait({ id }, 0)[1] == -1 then vim.cmd("startinsert") end
+    elseif typing_buffer() then
+      vim.cmd("startinsert")
+    end
+  end)
+end
+
+-- When the run split was last resized (vim.loop.now() ms). The WinResized
+-- autocmd down in the run section stamps it; the release mapping below reads
+-- it. This is how a statusline DRAG -- the resize gesture -- gets you back to
+-- typing: startinsert during the drag is knocked back out by the release
+-- event itself (measured: mode "nt" after every separator drag, the one state
+-- this editor promises you never reach by accident), so the RELEASE has to be
+-- the trigger. A release within this window of a resize is the end of that
+-- drag; one any later is an ordinary click. The stamp, not a boolean: a
+-- KEYBOARD resize (<C-w>+ in the interpreter's normal mode) sets it too, and
+-- no release ever follows to consume a flag -- a stale one would turn the
+-- next scrollback click into a yank back to the prompt, the exact thing the
+-- terminal-click policy below exists to prevent. Time bounds that damage.
+local sep_drag_t = 0
+local function sep_drag_done()
+  if vim.loop.now() - sep_drag_t > 300 then return false end
+  sep_drag_t = 0
+  type_here()                      -- terminal -> the prompt, file -> insert
+  return true
+end
+
 -- 'mouse=a' already moves the caret to the click, and from INSERT mode that is
 -- the whole story: click, keep typing. From NORMAL mode it is half the story --
 -- the caret lands where you clicked but you are still in Normal, so the next
@@ -846,6 +885,7 @@ end
 -- ---------------------------------------------------------------------------
 
 local function click_and_type()
+  if sep_drag_done() then return end        -- a resize drag ending, not a click
   if not typing_buffer() then return end
   -- Plain :startinsert, and deliberately NOT :startinsert! -- with
   -- virtualedit=all the press has already put the caret at the exact column
@@ -959,7 +999,25 @@ end
 
 -- run / interpreter. <C-e> is the whole interface: it shows the interpreter and
 -- it hides it, from any mode, and you are always typing wherever you land.
+--
+-- The split opens at RUN_H rows, but that is only the STARTING height.
+-- 'mouse=a' lets you drag the statusline between the file and the split, and a
+-- height you chose by hand should not be thrown away by the very key that
+-- defines this interface -- <C-e> hides and re-shows the split constantly, and
+-- resetting to 15 on every re-show would make dragging pointless. So the
+-- height is read back whenever one of these windows is about to go away, and
+-- every later open uses that instead. In-session only, on purpose: a fresh
+-- nvim starts at the default.
 local RUN_H = 15
+local run_h = RUN_H
+
+-- Read the height off a split that is about to be hidden or closed. pcall,
+-- because every caller is in a teardown path where the window can already be
+-- gone by the time this runs.
+local function remember_h(win)
+  local ok, h = pcall(vim.api.nvim_win_get_height, win)
+  if ok and h and h > 0 then run_h = h end
+end
 
 -- The LeetCode desk: preload.py lives next to this config, and every run and
 -- REPL routes through it, so Counter, deque, heappush and friends are live
@@ -1026,23 +1084,6 @@ local out_win = nil                      -- plain-run window: throwaway, reused
 local repl_win, repl_buf = nil, nil      -- the python3 -i session
 local repl_file, repl_tick = nil, nil    -- the code that session was started FROM
 
--- CONFLICT 7: `:startinsert` is IGNORED when it runs inside a mapping that was
--- invoked from insert mode -- nvim restores the mapping's original mode on the
--- way out and clobbers it. Since <C-e> is pressed mid-typing, every insert has
--- to be deferred past the end of the mapping. That is what vim.schedule buys.
-local function type_here()
-  vim.schedule(function()
-    if vim.bo.buftype == "terminal" then
-      -- jobwait(...,0) == -1 means still running. Entering terminal mode on a
-      -- FINISHED process is a trap: the next key just closes the window.
-      local id = vim.b.terminal_job_id
-      if id and vim.fn.jobwait({ id }, 0)[1] == -1 then vim.cmd("startinsert") end
-    elseif typing_buffer() then
-      vim.cmd("startinsert")
-    end
-  end)
-end
-
 local function shows(win, buf)
   return win and buf and vim.api.nvim_win_is_valid(win)
      and vim.api.nvim_win_get_buf(win) == buf
@@ -1075,11 +1116,12 @@ local function run_once()
   local f = source_state()
   if not f then return end                             -- nothing run yet
   if out_win and vim.api.nvim_win_is_valid(out_win) then
+    remember_h(out_win)
     vim.api.nvim_win_close(out_win, true)              -- reuse, don't stack splits
   end
   local cmd = py_cmd("", f)
   if not cmd then return end                           -- the warning already said why
-  vim.cmd("botright " .. RUN_H .. "split | terminal " .. cmd)
+  vim.cmd("botright " .. run_h .. "split | terminal " .. cmd)
   out_win = vim.api.nvim_get_current_win()
 end
 
@@ -1091,7 +1133,7 @@ local function repl_spawn(f, tick)
   if shows(repl_win, stale) then
     vim.api.nvim_set_current_win(repl_win)             -- swap in place, no flicker
   else
-    vim.cmd("botright " .. RUN_H .. "split")
+    vim.cmd("botright " .. run_h .. "split")
   end
   vim.cmd("terminal " .. cmd)
   repl_win, repl_buf = vim.api.nvim_get_current_win(), vim.api.nvim_get_current_buf()
@@ -1116,7 +1158,7 @@ local function repl_show()
   if shows(repl_win, repl_buf) then
     vim.api.nvim_set_current_win(repl_win)
   else
-    vim.cmd("botright " .. RUN_H .. "split")           -- hidden: bring it back
+    vim.cmd("botright " .. run_h .. "split")           -- hidden: bring it back
     vim.api.nvim_win_set_buf(0, repl_buf)
     repl_win = vim.api.nvim_get_current_win()
   end
@@ -1125,10 +1167,31 @@ end
 
 local function repl_hide()
   if shows(repl_win, repl_buf) then
+    remember_h(repl_win)
     vim.api.nvim_win_hide(repl_win)                    -- window gone, python untouched
   end
   type_here()                                          -- back in the editor, typing
 end
+
+-- Dragging the statusline to resize the split -- the customization run_h
+-- exists for -- strands you in Normal mode when the button comes up
+-- (measured: "nt", and the next "i" is swallowed entering insert instead of
+-- typed). Startinsert cannot simply be issued here: this fires per motion
+-- event, mid-drag, and the release knocks the mode right back out. So this
+-- only STAMPS the resize; the <LeftRelease> mappings up in the mouse section
+-- call sep_drag_done(), which turns a release-right-after-a-resize into
+-- type_here(). Programmatic resizes (the split opening and closing) also land
+-- here, but no release follows and the stamp quietly expires.
+vim.api.nvim_create_autocmd("WinResized", {
+  callback = function()
+    for _, w in ipairs(vim.v.event.windows or {}) do
+      if w == repl_win or w == out_win then
+        sep_drag_t = vim.loop.now()
+        return
+      end
+    end
+  end,
+})
 
 -- ---------------------------------------------------------------------------
 -- A finished run window closes itself when you leave it.
@@ -1163,6 +1226,7 @@ vim.api.nvim_create_autocmd("WinLeave", {
     vim.schedule(function()
       if out_win and vim.api.nvim_win_is_valid(out_win)
          and #vim.api.nvim_list_wins() > 1 then          -- never the last window
+        remember_h(out_win)
         pcall(vim.api.nvim_win_close, out_win, true)
       end
       out_win = nil
