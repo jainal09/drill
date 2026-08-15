@@ -1,0 +1,52 @@
+tests/suite_options.sh
+  s_20a792708b2b14::t_1f86d20b5193c5 124-125,128-138,157-159,162-164
+  s_20a792708b2b14::t_d5952ab479e9f4 126-127
+  s_20a792708b2b14::t_10a3ad41d6598d 139-156,160-161
+README.md
+  s_20a792708b2b14::t_3b63ad7e15abbc 76-80
+  s_20a792708b2b14::t_10dad4389df700 36-41
+docs/macos-cmd.md
+  s_20a792708b2b14::t_dcc15c727e5873 1-45,50,68-72,74,80-102,108-152
+  s_20a792708b2b14::t_25fe8d9434d2d9 73,75-79
+  s_20a792708b2b14::t_cc5a6df480d7ab 103-107
+  s_20a792708b2b14::t_a50b3329a15db8 46-49,51-67
+tests/suite_config.sh
+  s_20a792708b2b14::t_9299596467f1ac 153-193
+  s_20a792708b2b14::t_e0021cafd17c0a 194-225
+  s_20a792708b2b14::t_946c82430ef21e 100-115
+tests/mouse_drive.py
+  s_20a792708b2b14::t_1219d0984dc934 230-268
+nvimrc.lua
+  s_20a792708b2b14::t_d2f4e387c9a30a 338,341-342
+  s_20a792708b2b14::t_476ed61425a3b1 785-796
+  s_20a792708b2b14::t_cae1e1a5a6e784 1415-1454,1498-1530,1535-1540
+  s_20a792708b2b14::t_964f725fa96785 1455-1497
+  s_20a792708b2b14::t_a0e7307421a76b 819,822-853
+  s_20a792708b2b14::t_89fc2c26ade830 1531-1534
+  s_20a792708b2b14::t_7bcbf957a5ea37 854
+KEYS.md
+  s_20a792708b2b14::t_a7bfe62adab7a7 378-382
+  s_20a792708b2b14::t_c9a0034af70f9d 78-87
+  s_20a792708b2b14::t_57ece880ee6c9d 145-156,167
+  s_20a792708b2b14::t_0a0947a9cae864 195-198
+  s_20a792708b2b14::t_76eeaf8a561eab 22
+  s_20a792708b2b14::t_c7dc1da83cd56a 157-166
+tests/keycheck.sh
+  s_20a792708b2b14::t_7ded7eb777a854 1-47
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "baf4f70dc8e1588a7097439f835de60b654afa57",
+  "prompts": {},
+  "sessions": {
+    "s_20a792708b2b14": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "0f6a31f0-545a-4679-b098-ffe132b6b707",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jainal Gosaliya <jainal09gosalia@gmail.com>"
+    }
+  }
+}
