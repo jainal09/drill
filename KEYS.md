@@ -19,7 +19,7 @@ Syntax highlighting only. No completion, no LSP, no snippets, no AI.
 | `Ctrl+Y` | redo | normal, insert, visual |
 | `Ctrl+Shift+Z` | redo (needs a terminal that speaks CSI-u) | normal, insert, visual |
 | `Tab` | indent the selected lines | **selection only** |
-| `Shift+Tab` | unindent the selected lines | **selection only** |
+| `Shift+Tab` | unindent the selected lines — or, in insert, the line you are on | selection, insert |
 | `Ctrl+Q` | visual block (was `Ctrl+V`) | normal, visual |
 | `Ctrl+Shift+Q` | **quit, with a confirmation** | normal, insert, **and inside the REPL** — except on a terminal with no CSI-u, where **normal mode is not covered**; see below |
 | **Shift+arrows** | **select, like any other editor** | normal, insert |
@@ -74,6 +74,16 @@ extends a selection, as it does everywhere else.
 walks into the empty space past it instead of stopping. Delete the
 `vim.opt.virtualedit` line to get the old behaviour back, at the price of the
 click snapping again.
+
+**Backspace out of the empty space walks you home.** A click past the end of a
+line parks the caret where there are no characters under it, and vim's own
+backspace out there inched back one ghost column per press with the text
+untouched — thirty presses of nothing visible before the first real character
+would go, which read as "backspace does not move the cursor back". Now one
+press snaps the caret to the end of the real text, and the next one deletes
+for real. On a blank line it snaps to column 1 first, then joins upward.
+Backspace anywhere else — mid-word, after typing into the padded gap, at a
+line start — is vim's own, untouched.
 
 **Option+click is the same click.** (Alt+click on Linux and WSL — same key, same
 handling; the explanation below is macOS because that is the habit it
@@ -132,6 +142,29 @@ edit, the next one, and the one after, until you happened to run another search.
 `Ctrl+A` selects the file in **Select** mode, so the next thing you type —
 a letter, `Delete`, `Backspace` — replaces the lot and leaves you typing.
 
+## macOS: the same keys on Cmd
+
+Every chord above lives on Ctrl because a program running in a terminal never
+sees the Cmd key — the terminal emulator owns it (Cmd+C *is* the terminal's
+Copy, Cmd+Q quits the terminal), which is why every terminal editor is a Ctrl
+editor on a Mac. Two habits work regardless, with zero setup: **Cmd+V already
+pastes** — the terminal pastes, bracketed, into the file and the REPL alike —
+and **Shift+drag then Cmd+C** copies through the terminal's own selection.
+
+A terminal that *forwards* Cmd chords gets the whole set on Cmd too — iTerm2
+3.5+ is one setting (scoped so your shell prompt keeps normal Cmd), kitty and
+Ghostty unmap theirs per chord, Terminal.app cannot do it at all. Forwarded,
+you get `Cmd+S/C/X/V/A/F/Z//` plus **`Cmd+Shift+Z`** for redo, **`Cmd+Q`**
+for the quit prompt, **`Cmd+arrows`** for line/file ends (shifted: selecting)
+and **`Cmd+Backspace`** to delete to the line start — with two deliberate
+mac-isms: insert-mode `Cmd+C` copies the *line* rather than acting as Esc
+(that job stays on `Ctrl+C`), and `Cmd+V` also pastes inside the REPL, where
+`Ctrl+V` is left to python. Every *other* Cmd chord is deliberately
+swallowed: unmapped, a forwarded `Cmd+W` would type the literal text `<D-w>`
+into your file (measured). Setup recipes:
+[docs/macos-cmd.md](docs/macos-cmd.md), and `tests/keycheck.sh` prints what
+your terminal actually sends when you press one.
+
 ## Still vim
 
 Everything else is untouched: `hjkl`, `w/b/e`, `dd`, `yy`, `p`, `ciw`, `.`,
@@ -159,9 +192,10 @@ type code  ->  Ctrl+E  ->  typing at >>>  ->  Ctrl+E  ->  back in the file, in I
 You never press `i`, and you never press Esc. Landing in a live interpreter puts
 you at the prompt; landing back on the file puts you in insert. `Ctrl+W j` /
 `Ctrl+W k` and mouse clicks follow the same rule — *leaving the file*. They do
-not work leaving the **interpreter**: nothing but `Ctrl+E` and `Ctrl+Shift+Q` is
-bound in terminal mode, deliberately, so `Ctrl+W` goes to python as a word-erase
-and you stay put. Out of the REPL it is `Ctrl+E`, `Ctrl+\` `Ctrl+N`, or a click.
+not work leaving the **interpreter**: nothing but `Ctrl+E` and `Ctrl+Shift+Q` —
+plus `Cmd+V` and `Cmd+Q` where the terminal forwards Cmd (see
+[docs/macos-cmd.md](docs/macos-cmd.md)) — is bound in terminal mode,
+deliberately, so `Ctrl+W` goes to python as a word-erase and you stay put. Out of the REPL it is `Ctrl+E`, `Ctrl+\` `Ctrl+N`, or a click.
 
 **The interpreter always has the code you can see.** Edited the file since it
 started? `Ctrl+E` restarts python with the new code. Didn't touch it? Same
@@ -341,6 +375,11 @@ Every one of these was a real collision, not a hypothetical.
     Measured — two tabs on a two-line selection indented one line by 8 and the
     other by 4. It uses the buffer API instead, same rule as `Ctrl+/`: change the
     lines, never the mode. Output is byte-identical to `:>` otherwise.
+    Insert-mode `Shift+Tab` is the one later addition: it dedents the current
+    line via vim's own `i_CTRL-D` rather than this engine — the engine's
+    blank-lines-stay-blank rule (right for a block) would skip the
+    whitespace-only line the autoindent just gave you, which mid-typing is
+    exactly the line you want dedented.
 
 11. **Clearing the search highlight from an autocmd silently does nothing.** An
     autocmd body runs inside a save/restore of the search state, so writing

@@ -227,6 +227,45 @@ def main():
            got == "def f(n):" + " " * 30 + "#", repr(got))
         v.reset()
 
+        # ---- backspace OUT of the empty space ----------------------------
+        # The other half of clicking anywhere. Vim's own insert <BS> walked
+        # back ONE ghost column per press -- virtcol 40, 39, 38... -- with the
+        # text untouched, which on screen read as "backspace does not move the
+        # cursor back". One press now snaps the caret to the end of the real
+        # text; the next deletes for real. 0x7f is what the big delete key
+        # sends under TERM=xterm-256color.
+        v.normal()
+        v.click(GUT + 40, 1)                   # ghost space after "def f(n):"
+        v.send("\x7f", 0.30)
+        ok("bs_ghost_snaps_to_text", v.q('virtcol(".")') == "10", v.q('virtcol(".")'))
+        ok("bs_ghost_deletes_nothing", v.q("getline(1)") == "def f(n):",
+           repr(v.q("getline(1)")))
+        ok("bs_ghost_stays_insert", v.q("mode(1)") == "i", v.q("mode(1)"))
+        v.send("\x7f", 0.30)
+        ok("bs_after_snap_deletes", v.q("getline(1)") == "def f(n)",
+           repr(v.q("getline(1)")))
+        v.reset()
+
+        # on a blank line: snap to column 1 first, and only THEN join up
+        v.normal()
+        v.click(GUT + 26, 6)                   # line 6 of the fixture is EMPTY
+        v.send("\x7f", 0.30)
+        ok("bs_blank_snaps_to_col1", v.q('virtcol(".")') == "1", v.q('virtcol(".")'))
+        ok("bs_blank_line_count_kept", v.q("line('$')") == "7", v.q("line('$')"))
+        v.send("\x7f", 0.30)
+        ok("bs_blank_then_joins", v.q("line('$')") == "6", v.q("line('$')"))
+        v.reset()
+
+        # an ORDINARY backspace is untouched: type into the padded gap and
+        # <BS> deletes the character you just typed, nothing else
+        v.normal()
+        v.click(GUT + 20, 1)
+        v.send("#", 0.30)
+        v.send("\x7f", 0.30)
+        ok("bs_after_typing_still_deletes",
+           v.q("getline(1)") == "def f(n):" + " " * 10, repr(v.q("getline(1)")))
+        v.reset()
+
         # ---- a blank line, clicked way out to the right ------------------
         # The case that made the mouse look broken: a half-written drill file
         # is mostly blank lines, and every click on one used to snap to column
