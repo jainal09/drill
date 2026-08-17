@@ -335,10 +335,11 @@ map("n", "<C-f>", "/", L)              -- find
 -- EXACTLY where you were typing, so the pre-<Esc> spot is stashed here and
 -- consumed there.
 local search_from = nil
-map("i", "<C-f>", function()
+local function find_from_insert()
   search_from = vim.api.nvim_win_get_cursor(0)
   return "<Esc>/"
-end, { expr = true, silent = false })
+end
+map("i", "<C-f>", find_from_insert, { expr = true, silent = false })
 
 -- ...and the highlight goes away the moment you start typing again.
 -- 'hlsearch' is ON by default in nvim and this config never set it, so every
@@ -781,6 +782,18 @@ end
 map({ "x", "s" }, "<Tab>",   function() shift_lines(1) end, S)
 map({ "x", "s" }, "<S-Tab>", function() shift_lines(-1) end, S)
 
+-- ...and in INSERT, Shift+Tab dedents the line you are on, the way it does in
+-- every other editor. Unmapped, <S-Tab> in insert falls back to plain <Tab>
+-- and INDENTS -- the exact opposite of what the shifted chord promises. Plain
+-- Tab is untouched (you are writing Python; it has to go on typing
+-- indentation). i_CTRL-D rather than the block engine above, deliberately:
+-- vim's own "one shiftwidth off the front" works from any column, tracks the
+-- caret, and -- unlike shift_lines, whose blank-lines-stay-blank rule exists
+-- for block selections -- it also takes one level off the whitespace-only
+-- line the autoindent just gave you, which mid-typing is exactly the line you
+-- want it to work on.
+map("i", "<S-Tab>", "<C-d>", S)
+
 -- CONFLICT 3: <C-z> is suspend by default. Mapped in every mode that can reach
 -- nvim's own suspend, so the editor cannot be accidentally backgrounded.
 map({ "n", "v", "i" }, "<C-z>", "<Cmd>undo<CR>", S)
@@ -803,8 +816,41 @@ map({ "n", "v", "i" }, "<C-S-z>", "<Cmd>redo<CR>", S)
 map("n", "<Del>", '"_x', S)
 for _, k in ipairs({ "<Del>", "<BS>" }) do
   map("x", k, '"_c', S)
-  map("s", k, '<C-g>"_c', S)           -- insert-mode <BS>/<Del> are already right
+  map("s", k, '<C-g>"_c', S)           -- insert-mode <Del> is already right
 end
+
+-- ---------------------------------------------------------------------------
+-- Backspace OUT of the empty space  --  the other half of clicking anywhere
+--
+-- virtualedit=all lets a click land past the end of a line, and vim's own
+-- insert-mode <BS> then walks back ONE GHOST COLUMN per press with the text
+-- untouched. Measured: click "def f(n):" at virtcol 40 and three presses read
+-- virtcol 39, 38, 37, the line identical throughout -- thirty presses of
+-- nothing visible before the first real character would go. On screen that
+-- reads as "backspace does not move the cursor back".
+--
+-- A backspace out in the ghost space means "I did not mean to be out here".
+-- So ONE press snaps the caret back to the end of the real text, and the next
+-- press deletes for real -- exactly where a click past EOL would have put you
+-- in an editor with no virtual space, except here you spend one keystroke
+-- instead of losing the click-anywhere feature.
+--
+-- Only PAST-EOL ghost space qualifies: col('.') == col('$') with coladd > 0.
+-- The coladd of a caret sitting INSIDE a tab's width (also virtualedit) has
+-- col('.') < col('$') and falls through to the built-in, as does every
+-- ordinary backspace (coladd == 0) -- typing, autoindent, joining a line onto
+-- the one above. The fed <BS> is mode "n": remapping it through THIS mapping
+-- again would recurse.
+-- ---------------------------------------------------------------------------
+map("i", "<BS>", function()
+  local p = vim.fn.getpos(".")                       -- {buf, line, col, coladd}
+  if (p[4] or 0) > 0 and p[3] == vim.fn.col("$") then
+    vim.fn.cursor(p[2], vim.fn.col("$"), 0)          -- back to the real text
+    return
+  end
+  vim.api.nvim_feedkeys(
+    vim.api.nvim_replace_termcodes("<BS>", true, false, true), "n", false)
+end, S)
 
 -- ...and the same for typing over a selection. Select mode replaces it for
 -- free, but the replaced text would land in the system clipboard, so every
@@ -1366,3 +1412,130 @@ map({ "n", "i", "t" }, "<C-S-q>", quit_drill, S)
 if IS_WSL then
   map({ "i", "t" }, "<C-q>", quit_drill, S)
 end
+
+-- ---------------------------------------------------------------------------
+-- macOS: the same chords on Cmd  --  for terminals that forward it
+--
+-- Everything above lives on Ctrl for one reason: a program running in a
+-- terminal never SEES the Cmd key. The terminal emulator owns it -- Cmd+C is
+-- the terminal's own Copy, Cmd+V its Paste, Cmd+Q quits it -- and the legacy
+-- encoding has no byte for a Cmd chord at all, so there was never anything to
+-- bind. That is why every editor that lives in a terminal is a Ctrl editor,
+-- even on a Mac.
+--
+-- CSI-u fixed the second half of that: super is modifier bit 8, so Cmd+Z can
+-- be encoded as ESC [ 122;9 u, and nvim decodes those UNCONDITIONALLY --
+-- measured on this machine, feeding the raw bytes fired a <D-z> mapping with
+-- no protocol negotiation at all. What no terminal does is SEND them by
+-- default. iTerm2 3.5+ will with one setting (Settings > Profiles > Keys >
+-- General > "Left Command key: Super" -- live only while the running program
+-- speaks the kitty protocol, so the shell prompt keeps its normal Cmd), kitty
+-- and Ghostty per chord by unmapping their own. docs/macos-cmd.md has the
+-- recipes; tests/keycheck.sh prints what your terminal actually sends.
+--
+-- So every editor chord is bound on <D-...> too -- same modes, same handlers.
+-- On a terminal that forwards nothing, these mappings simply never fire. And
+-- there is no legacy-fallback problem to manage here (the <C-S-z> / <C-S-q>
+-- dance): with no legacy byte to degrade to, a Cmd chord arrives whole or not
+-- at all.
+--
+-- Three deliberate differences from the Ctrl set, each one a macOS meaning:
+--   * insert-mode Cmd+C is NOT Esc. On a Mac that chord means Copy and
+--     nothing else -- so with no selection it copies the LINE, the way
+--     VS Code and Sublime do. <C-c> keeps the Esc job.
+--   * Cmd+Shift+Z redoes -- THE mac redo -- alongside <C-y> and <C-S-z>.
+--   * Cmd+Q asks the same "Quit drill?" as <C-S-q>: a FORWARDED Cmd+Q was
+--     aimed at the program you are looking at, and that is drill. Cancel is
+--     still the default, and a terminal that keeps Cmd+Q for itself never
+--     sends it here in the first place.
+-- Also terminal-mode Cmd+V pastes into the REPL: <C-v> there is left to
+-- python, and a terminal that forwards Cmd has taken its own paste away, so
+-- the chord must not go dead in the one window you paste tracebacks into.
+-- nvim_paste routes it through the job, bracketed-paste aware.
+
+-- FIRST, a floor under every OTHER Cmd chord. A terminal that forwards Cmd
+-- forwards ALL of it -- iTerm2's Super setting is not per-key -- and an
+-- UNMAPPED <D-...> in nvim does not die quietly. Measured over the wire:
+-- insert typed the literal text "<D-w>" into the buffer, Select replaced the
+-- selection with it, and normal mode executed the raw spelling as commands
+-- and ate a character. So one reflexive Cmd+W or Cmd+B from a mac hand would
+-- spray notation into the file. Every printable Cmd chord is floored to
+-- <Nop> here -- including terminal mode, where the junk would have gone to
+-- python, and the command line, where a Cmd+W at the ':' prompt left a stray
+-- "w" sitting in the command -- and the chords with real jobs are bound
+-- AFTERWARDS, overwriting their slot. pcall, because a couple of punctuation
+-- spellings ("<D->>") may not parse on every nvim; a skipped floor there is
+-- the pre-existing behaviour, not a regression.
+local D_NAMED = { [32] = "<D-Space>", [60] = "<D-lt>", [124] = "<D-Bar>" }
+for i = 32, 126 do
+  local k = D_NAMED[i] or ("<D-" .. string.char(i) .. ">")
+  for _, mode in ipairs({ "n", "i", "x", "s", "t", "c" }) do
+    pcall(map, mode, k, "<Nop>", S)
+  end
+end
+for _, k in ipairs({ "<D-CR>", "<D-BS>" }) do
+  for _, mode in ipairs({ "n", "i", "x", "s", "t", "c" }) do
+    pcall(map, mode, k, "<Nop>", S)
+  end
+end
+
+-- The mac cursor chords, on the built-ins that already speak this config's
+-- selection model: <Home>/<End>/<C-Home>/<C-End> and their shifted forms are
+-- all in 'keymodel's startsel/stopsel list, so Cmd+Shift+arrow extends a
+-- Select-mode selection and a plain Cmd+arrow collapses one, exactly like
+-- the bare arrows. noremap, so these reach the built-in, not a mapping.
+for _, m in ipairs({
+  { "<D-Left>",    "<Home>" },     { "<S-D-Left>",  "<S-Home>" },
+  { "<D-Right>",   "<End>" },      { "<S-D-Right>", "<S-End>" },
+  { "<D-Up>",      "<C-Home>" },   { "<S-D-Up>",    "<C-S-Home>" },
+  { "<D-Down>",    "<C-End>" },    { "<S-D-Down>",  "<C-S-End>" },
+}) do
+  map({ "n", "i", "x", "s" }, m[1], m[2], S)
+end
+-- Cmd+Backspace deletes to the start of the line, as everywhere on a Mac.
+-- i_CTRL-U, so what it deletes does not overwrite the clipboard.
+map("i", "<D-BS>", "<C-u>", S)
+
+local function copy_line()
+  local line = { vim.api.nvim_get_current_line() }
+  vim.fn.setreg("+", line, "V")
+  vim.fn.setreg('"', line, "V")
+end
+
+map({ "n", "v", "i" }, "<D-s>", save, S)
+
+map({ "x", "s" }, "<D-c>", copy_selection, S)
+map({ "n", "i" }, "<D-c>", copy_line, S)
+
+map("x", "<D-x>", '"+d', S)
+map("s", "<D-x>", '<C-g>"+d', S)
+
+map("n", "<D-v>", '"+p', S)
+map("i", "<D-v>", "<C-r><C-o>+", S)
+map("c", "<D-v>", "<C-r>+", L)
+map("x", "<D-v>", '"_c<C-r><C-o>+', S)
+map("s", "<D-v>", '<C-g>"_c<C-r><C-o>+', S)
+map("t", "<D-v>", function()
+  local txt = vim.fn.getreg("+")
+  if txt ~= "" then vim.api.nvim_paste(txt, true, -1) end
+end, S)
+
+map("n", "<D-a>", "gggH<C-o>G", S)
+map("i", "<D-a>", "<C-o>gg<C-o>gH<C-o>G", S)
+
+map("n", "<D-f>", "/", L)
+map("i", "<D-f>", find_from_insert, { expr = true, silent = false })
+
+map({ "n", "v", "i" }, "<D-z>", "<Cmd>undo<CR>", S)
+map({ "n", "v", "i" }, "<D-S-z>", "<Cmd>redo<CR>", S)
+
+-- "<D-?>" too: a terminal that encodes Cmd+Shift+/ as the shifted CODEPOINT
+-- (ESC[63;9u) lands on that spelling, and the <Nop> floor above must not be
+-- what catches it.
+for _, key in ipairs({ "<D-/>", "<D-S-/>", "<D-?>" }) do
+  for _, mode in ipairs({ "n", "i", "x", "s" }) do
+    map(mode, key, toggle_comment, S)
+  end
+end
+
+map({ "n", "i", "t" }, "<D-q>", quit_drill, S)

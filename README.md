@@ -33,6 +33,13 @@ You're in the editor, in a file that didn't exist a second ago, cursor blinking,
 already in insert mode. No path to remember, no project to scaffold, no config
 to answer. Just type.
 
+**One optional extra step on macOS:** flip a single iTerm2 setting
+(*Settings → Profiles → Keys → General → "Left Command key" → Super*) and
+every editor chord is on **Cmd** too — Cmd+C, Cmd+V, Cmd+Z, the keys your
+hand already knows — while the shell prompt keeps its normal Cmd. `Ctrl+E`
+and `Ctrl+R` stay on Ctrl on purpose: they are drill's own keys. Details and
+other terminals: [docs/macos-cmd.md](docs/macos-cmd.md).
+
 ## `Ctrl+E` — your code, live
 
 The feature you'll press a hundred times a day. One keystroke drops you into a
@@ -66,6 +73,11 @@ Every key does what your fingers already expect:
 `Ctrl+S` save · `Ctrl+C/X/V` copy/cut/paste · `Ctrl+A` select all ·
 `Ctrl+Z` undo · `Ctrl+Y` redo · `Ctrl+F` find · `Ctrl+/` comment ·
 **Shift+arrows select** · `Tab`/`Shift+Tab` indent · `Delete` clears a selection
+
+Ctrl, not Cmd, because a terminal never hands the Cmd key to what runs inside
+it — but the same chords are bound on Cmd too, live the moment your terminal
+forwards them. iTerm2 does it with one setting:
+[docs/macos-cmd.md](docs/macos-cmd.md).
 
 And underneath it is still real Neovim: `hjkl`, `dd`, `ciw`, macros and
 `:%s/…` all work the moment you want them.

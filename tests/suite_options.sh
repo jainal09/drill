@@ -121,6 +121,52 @@ for _, m in ipairs({"n", "v", "i"}) do
   ok("redo_ctrl_shift_z_bound_" .. m, vim.fn.maparg("<C-S-z>", m) ~= "", vim.fn.maparg("<C-S-z>", m))
   ok("undo_ctrl_z_bound_" .. m, vim.fn.maparg("<C-z>", m) ~= "", vim.fn.maparg("<C-z>", m))
 end
+-- the Cmd mirrors (docs/macos-cmd.md). They only ever arrive from a terminal
+-- that forwards Cmd as CSI-u, and everywhere else they are inert -- but they
+-- must be REGISTERED, or a forwarded chord falls through to the nvim
+-- defaults and a bare <D-a> types an "a" over your selection.
+for _, m in ipairs({"n", "i"}) do
+  for _, k in ipairs({"<D-s>", "<D-c>", "<D-v>", "<D-a>", "<D-f>",
+                      "<D-z>", "<D-S-z>", "<D-/>", "<D-q>"}) do
+    ok("cmdkey_bound_" .. k .. "_" .. m, vim.fn.maparg(k, m) ~= "", vim.fn.maparg(k, m))
+  end
+end
+for _, m in ipairs({"x", "s"}) do
+  for _, k in ipairs({"<D-c>", "<D-x>", "<D-v>", "<D-/>"}) do
+    ok("cmdkey_bound_" .. k .. "_" .. m, vim.fn.maparg(k, m) ~= "", vim.fn.maparg(k, m))
+  end
+end
+-- the mac cursor chords ride the built-ins that keymodel already governs
+for _, m in ipairs({"n", "i"}) do
+  for _, k in ipairs({"<D-Left>", "<D-Right>", "<D-Up>", "<D-Down>",
+                      "<S-D-Left>", "<S-D-Right>", "<S-D-Up>", "<S-D-Down>"}) do
+    ok("cmdkey_bound_" .. k .. "_" .. m, vim.fn.maparg(k, m) ~= "", vim.fn.maparg(k, m))
+  end
+end
+ok("cmdkey_bs_is_ctrl_u", vim.fn.maparg("<D-BS>", "i"):lower() == "<c-u>",
+   vim.fn.maparg("<D-BS>", "i"))
+-- every OTHER Cmd chord is floored to <Nop> -- unmapped, a forwarded <D-w>
+-- typed the literal text "<D-w>" into the buffer. Spot-check the floor in
+-- every mode, terminal included (there the junk would have gone to python)
+-- and the command line (there it landed in the ':' prompt). The keys are the
+-- spellings most likely to regress: the plain letter plus the three the
+-- generator has to name by hand and a digit.
+for _, m in ipairs({"n", "i", "x", "s", "t", "c"}) do
+  for _, k in ipairs({"<D-w>", "<D-Space>", "<D-lt>", "<D-Bar>", "<D-1>"}) do
+    ok("cmdfloor_" .. k .. "_" .. m, vim.fn.maparg(k, m):lower() == "<nop>",
+       vim.fn.maparg(k, m))
+  end
+end
+-- terminal mode gets paste, quit and the floor and NOTHING else: Cmd+C stays
+-- inert there so nothing is taken from python
+for _, k in ipairs({"<D-v>", "<D-q>"}) do
+  ok("cmdkey_bound_" .. k .. "_t", vim.fn.maparg(k, "t") ~= "", vim.fn.maparg(k, "t"))
+end
+ok("cmdkey_c_floored_in_terminal", vim.fn.maparg("<D-c>", "t"):lower() == "<nop>",
+   vim.fn.maparg("<D-c>", "t"))
+-- insert Shift+Tab dedent (i_CTRL-D), the pair of selection Tab/S-Tab
+ok("stab_insert_bound", vim.fn.maparg("<S-Tab>", "i"):lower() == "<c-d>",
+   vim.fn.maparg("<S-Tab>", "i"))
 -- quit. Bound in terminal too, so you can leave from inside the interpreter --
 -- python has no use for <C-S-q>. <C-q> must stay VISUAL BLOCK: the two are only
 -- separate keys because CSI-u keeps Shift on a control chord.

@@ -97,6 +97,22 @@ t tab_mixed_indent_matches_vim --ext py \
 t insert_tab_still_types_indent --ext py \
    --content 'x' --cursor 1:1 --keys '<Tab>Z<Esc>' --expect '    Zx'
 
+# ...and Shift+Tab in INSERT dedents the line you are on (i_CTRL-D).
+# Unmapped it fell back to plain <Tab> and INDENTED -- the opposite of the
+# label. Works from any column, and on the whitespace-only line the
+# autoindent just gave you, which the selection engine deliberately skips.
+t stab_insert_dedents_current_line --ext py \
+   --content '        a = 1' --keys '<S-Tab><Esc>' --expect '    a = 1'
+
+t stab_insert_works_mid_line --ext py \
+   --content '    a = 1' --cursor 1:9 --keys '<S-Tab><Esc>' --expect 'a = 1'
+
+t stab_insert_takes_autoindent_off --ext py \
+   --content '    ' --keys '<S-Tab><Esc>' --expect ''
+
+t stab_insert_floors_at_column_zero --ext py \
+   --content 'a = 1' --keys '<S-Tab>Z<Esc>' --expect 'Za = 1'
+
 echo "=== cut / paste / select-all ==="
 
 t cut_ctrl_x_in_select \
@@ -133,6 +149,79 @@ t redo_ctrl_y_still_works \
 
 t undo_then_no_redo_stays_undone \
    --content 'base' --keys 'XY<C-z><Esc>' --expect 'base'
+
+echo
+echo "=== the same chords on Cmd (a mac terminal that forwards it) ==="
+# <D-...> only ever arrives as CSI-u -- there is no legacy byte for a Cmd
+# chord -- and nvim decodes those with no negotiation, so feeding the notation
+# exercises exactly what a forwarding terminal delivers. docs/macos-cmd.md is
+# the setup; these assert the editor side of the bargain.
+
+t cmd_z_undoes \
+   --content 'base' --keys 'XY<D-z><Esc>' --expect 'base'
+
+t cmd_shift_z_redoes \
+   --content 'base' --keys 'XY<D-z><D-S-z><Esc>' --expect 'XYbase'
+
+t cmd_a_then_type_replaces_all \
+   --content 'alpha\nbravo\ncharlie' --keys '<D-a>Z' --expect 'Z'
+
+t cmd_slash_comments --ext py \
+   --content 'a = 1' --keys '<D-/><Esc>' --expect '# a = 1'
+
+t cmd_slash_roundtrips --ext py \
+   --content 'a = 1' --keys '<D-/><D-/><Esc>' --expect 'a = 1'
+
+t cmd_x_cuts \
+   --content 'alpha bravo' --keys "${SEL5}<D-x>" --expect ' bravo' --expect-reg '+=alpha'
+
+t cmd_c_copies_and_keeps_selection \
+   --content 'alpha bravo' --keys "${SEL5}<D-c>Z" --expect 'Z bravo' --expect-reg '+=alpha'
+
+# no selection: Cmd+C copies the LINE, the way VS Code and Sublime do.
+# (Insert-mode Cmd+C is NOT Esc -- on a Mac that chord means Copy, full stop.)
+t cmd_c_no_selection_copies_line \
+   --content 'alpha bravo' --keys '<D-c><Esc>' --expect 'alpha bravo' \
+   --expect-reg '+=alpha bravo'
+
+t cmd_v_paste_roundtrip \
+   --content 'alpha bravo' --keys "${SEL5}<D-x><D-v>" --expect 'alpha bravo'
+
+t cmd_v_over_selection \
+   --content 'one two' --keys '<S-Right><S-Right><S-Right><D-x><S-Right><D-v>' \
+   --expect 'onetwo'
+
+# the mac cursor chords ride the built-ins (<Home>/<End>/<C-Home>/<C-End>),
+# which are all in 'keymodel', so the shifted forms select like shift+arrows
+t cmd_left_is_line_start \
+   --content 'alpha bravo' --cursor 1:6 --keys '<D-Left>Z<Esc>' --expect 'Zalpha bravo'
+
+t cmd_right_is_line_end \
+   --content 'alpha bravo' --cursor 1:3 --keys '<D-Right>Z<Esc>' --expect 'alpha bravoZ'
+
+t cmd_up_is_start_of_file \
+   --content 'alpha\nbravo' --cursor 2:3 --keys '<D-Up>Z<Esc>' --expect 'Zalpha\nbravo'
+
+t cmd_down_is_end_of_file \
+   --content 'alpha\nbravo\ncharlie' --keys '<D-Down>Z<Esc>' \
+   --expect 'alpha\nbravo\ncharlieZ'
+
+t cmd_shift_right_selects_to_eol \
+   --content 'alpha bravo' --cursor 1:7 --keys '<S-D-Right>Z<Esc>' --expect 'alpha Z'
+
+t cmd_bs_deletes_to_line_start \
+   --content 'alpha bravo' --start append --keys '<D-BS>Z<Esc>' --expect 'Z'
+
+# ...and every OTHER Cmd chord is floored to <Nop>. Unmapped, a forwarded
+# <D-w> typed the literal text "<D-w>" into the buffer (measured over the
+# wire), replaced a selection with it in Select, and ate a character in
+# normal -- so one reflexive Cmd+W from a mac hand would spray notation
+# into the file.
+t cmd_floor_swallows_unbound_chords \
+   --content 'alpha' --keys '<D-w><D-b><D-n>Z<Esc>' --expect 'Zalpha'
+
+t cmd_floor_keeps_selection_intact \
+   --content 'alpha bravo' --keys "${SEL5}<D-w>Z" --expect 'Z bravo'
 
 
 echo
