@@ -248,7 +248,9 @@ goes to python.
 `Ctrl+B` shows and hides it (`Cmd+B` too on a forwarding terminal — including
 from inside the REPL, where `Ctrl+B` is deliberately left to readline). It
 opens without stealing your caret: the tree appears on the left and you are
-still typing in your code. The mouse is how you use it:
+still typing in your code — **rooted at the folder of the file you are in**,
+not at whatever directory your shell was sitting in. The mouse is how you
+use it:
 
 | Gesture | Does |
 |---|---|

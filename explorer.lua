@@ -303,10 +303,23 @@ function M.toggle()
     vim.notify(M.error, vim.log.levels.WARN)
     return
   end
+  -- The tree roots at the folder of the file you are IN, not at the shell's
+  -- working directory. drill launches nvim from wherever the shell happened
+  -- to be -- `d lld-prac main` in your home directory used to open a tree of
+  -- ~, which is a tree of everything except your project. The file's folder
+  -- is the project; that is what the sidebar is for. No real file under the
+  -- caret (the netrw listing, a scratch buffer): fall back to the cwd.
+  --
   -- focus=false: the sidebar appears, the caret stays in your code -- the
   -- mouse is how you enter the tree. type_here() on both directions, so the
   -- toggle keeps drill's one promise: wherever you land, you are typing.
-  require("nvim-tree.api").tree.toggle({ focus = false })
+  local opts = { focus = false }
+  local f = vim.fn.expand("%:p")
+  if vim.bo.buftype == "" and f ~= "" and vim.fn.filereadable(f) == 1 then
+    opts.path = vim.fn.fnamemodify(f, ":h")
+    opts.find_file = true               -- ...and land highlighted on the file
+  end
+  require("nvim-tree.api").tree.toggle(opts)
   host.type_here()
 end
 

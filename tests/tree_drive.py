@@ -303,6 +303,34 @@ def main():
         ok("ctrl_b_in_tree_closes_it", q("winnr('$')") == "2", q("winnr('$')"))
         ok("typing_after_tree_close_with_repl",
            q("mode(1)") in ("i", "t"), q("mode(1)"))
+
+        # ---- the tree roots where your file lives -------------------------
+        # `d lld-prac main` runs nvim from wherever the shell was, so rooting
+        # at the CWD showed a tree of everything EXCEPT the project. The root
+        # must be the folder of the file under the caret, each time it opens.
+        def tree_root():
+            return q('luaeval("require(\\"nvim-tree.api\\")'
+                     '.tree.get_nodes().absolute_path")')
+
+        subprocess.run(["nvim", "--server", SOCK, "--remote-send",
+                        "<C-\\><C-n><C-w>k:e sub/c.py<CR>"],
+                       capture_output=True, stdin=subprocess.DEVNULL)
+        time.sleep(1.0)
+        press("\x02", 1.2)
+        ok("tree_roots_at_files_folder",
+           tree_root().endswith("/sub"), tree_root())
+        ok("file_listed_under_new_root", row_of("c.py") > 0,
+           "\n".join(tree_rows()))
+
+        press("\x02", 0.8)                               # close it again
+        subprocess.run(["nvim", "--server", SOCK, "--remote-send",
+                        "<C-\\><C-n><C-w>k:e zz.py<CR>"],
+                       capture_output=True, stdin=subprocess.DEVNULL)
+        time.sleep(1.0)
+        press("\x02", 1.2)
+        ok("tree_root_follows_reopen",
+           tree_root().rstrip("/").endswith(os.path.basename(root)),
+           tree_root())
     finally:
         subprocess.run(["nvim", "--server", SOCK, "--remote-send", "<C-\\><C-n>:qa!<CR>"],
                        capture_output=True, stdin=subprocess.DEVNULL)

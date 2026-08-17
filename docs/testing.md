@@ -5,7 +5,7 @@ and diffing what comes out. Nothing is mocked: if a case passes, that keystroke
 does that thing in this config.
 
 ```sh
-./tests/run.sh            # 719 cases; exit 0 only if all pass
+./tests/run.sh            # 722 cases; exit 0 only if all pass
 ./tests/run.sh sel_       # just the select-mode cases
 ```
 
@@ -19,7 +19,7 @@ does that thing in this config.
 | `suite_quit.sh` | 21 | pty: the confirmation is drawn, Cancel and Esc both return you to typing, Quit writes the pending edit, and all of it again from inside the REPL |
 | `suite_runwin.sh` | 12 | pty: the `Ctrl+R` output window — that it closes when you leave it, that any key still closes it from inside, that `Ctrl+R` then `Ctrl+E` is two windows and not three, and that a program still running is left alone |
 | `suite_netrw.sh` | 10 | pty: the directory listing is not a file — `Ctrl+S` does not wedge it, `Ctrl+E`/`Ctrl+R` start nothing. Headless is useless here: it does not produce a netrw buffer at all |
-| `suite_tree.sh` | 45 | pty: the `Ctrl+B` sidebar, gesture by gesture — both toggle chords (Cmd+B as raw CSI-u bytes), focus that never leaves your code, single-click open and fold, the winbar `[+ File]`/`[+ Folder]` buttons all the way to files on disk, the right-click menu drawn and an item clicked by its float coordinates, ctrl-click marks, drag-and-drop single and marked-pair moves, a jitter that must not move anything, and the three-window layout with the REPL |
+| `suite_tree.sh` | 48 | pty: the `Ctrl+B` sidebar, gesture by gesture — both toggle chords (Cmd+B as raw CSI-u bytes), focus that never leaves your code, single-click open and fold, the winbar `[+ File]`/`[+ Folder]` buttons all the way to files on disk, the right-click menu drawn and an item clicked by its float coordinates, ctrl-click marks, drag-and-drop single and marked-pair moves, a jitter that must not move anything, the three-window layout with the REPL, and the root landing on the file's folder on every open |
 | `suite_timer.sh` | 36 | not nvim at all — 18 assertions against `drill.sh` run under **bash and zsh**, which disagree about word splitting |
 | `suite_projects.sh` | 40 | also not nvim — nested `d <dir> <name>` and `d search` against stubbed `nvim`/`fzf` binaries in a scratch `DRILL_HOME`, under **bash and zsh** — including that `..` cannot leave the bucket and bracketed names resolve literally |
 | `suite_preload.sh` | 26 | the LeetCode desk: import-free files using the toolkit under `r`/`ri` in **bash and zsh** — shadowing, argv, `__name__`, exit codes, sibling imports in project folders, names still live at the prompt after a raise, a typo'd name getting python's own error, the plain-python3 fallback — plus a pty pass proving `Ctrl+R` and `Ctrl+E` route through the shim |

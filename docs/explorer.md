@@ -6,6 +6,13 @@ terminal forwards Cmd ([docs/macos-cmd.md](macos-cmd.md)), `Cmd+B` does the
 same thing and also works from inside the REPL, where `Ctrl+B` is
 deliberately left alone (readline's backward-char, and tmux's prefix).
 
+**It roots at the folder of the file you are in**, freshly on every open —
+`d lld-prac main` shows the `lld-prac/` folder with `main.py` highlighted,
+no matter which directory your shell happened to be in when you typed it.
+(drill launches nvim from wherever you were; the shell's directory is a tree
+of everything *except* your project.) Switch to a file elsewhere and the next
+`Ctrl+B` roots there instead.
+
 ## The gestures
 
 Everything is a mouse gesture; the keyboard is only for typing names.
@@ -58,3 +65,11 @@ stay an exception:
   the pinned plugins are what need 0.10.
 - `Cmd+B` does nothing — your terminal is not forwarding Cmd. One setting:
   [docs/macos-cmd.md](macos-cmd.md).
+- **Right-click opens your terminal's own menu instead of drill's** — the
+  terminal is eating the click before nvim sees it. In iTerm2 that is a
+  Pointer binding, and it wins over mouse reporting: **Settings → Pointer →
+  Bindings**, select the *Right button · single click → Open Context Menu*
+  row, press **−** to remove it. With the binding gone, the click reaches
+  drill whenever the editor is running, and iTerm2 still shows its own menu
+  at the shell prompt, where nothing is listening for the mouse. (Ctrl-click
+  in drill is multi-select, not the menu — that one is drill's on purpose.)
