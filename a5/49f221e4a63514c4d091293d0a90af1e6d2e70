@@ -1,0 +1,27 @@
+tests/tree_drive.py
+  s_b9f3ac61b57ca8::t_eac19e035029f6 17
+  s_b9f3ac61b57ca8::t_ceefcc240755e4 69-73,80-81,83,87-90
+  s_b9f3ac61b57ca8::t_39726198a22c16 203-233
+  s_b9f3ac61b57ca8::t_188139a4bf164b 91
+explorer.lua
+  s_b9f3ac61b57ca8::t_3b56ee1fb293e8 33
+  s_b9f3ac61b57ca8::t_2719847917f314 171
+  s_b9f3ac61b57ca8::t_9cef5ba3759e0a 145-170,172-188
+  s_b9f3ac61b57ca8::t_4f067a5a370e32 86-103
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "a549f221e4a63514c4d091293d0a90af1e6d2e70",
+  "prompts": {},
+  "sessions": {
+    "s_b9f3ac61b57ca8": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d4c50cfe-52e2-415e-a77a-3d2fa06185b6",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jainal Gosaliya <jainal09gosalia@gmail.com>"
+    }
+  }
+}

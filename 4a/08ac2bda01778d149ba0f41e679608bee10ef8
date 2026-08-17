@@ -1,0 +1,32 @@
+tests/suite_config.sh
+  s_b9f3ac61b57ca8::t_0dec5876fafab9 221
+vendor.sh
+  s_b9f3ac61b57ca8::t_b6d3969ea97b49 1-49
+explorer.lua
+  s_b9f3ac61b57ca8::t_e43e37d8088a47 1-95
+.gitignore
+  s_b9f3ac61b57ca8::t_9385d7a20b5897 15-17
+nvimrc.lua
+  s_b9f3ac61b57ca8::t_fcbdbd32a68ab1 1536-1540
+  s_b9f3ac61b57ca8::t_35d41d845f883d 1317-1344
+  s_b9f3ac61b57ca8::t_84f79bb63f2477 1316
+tests/suite_options.sh
+  s_b9f3ac61b57ca8::t_83332d93163d82 170,174-186
+  s_b9f3ac61b57ca8::t_37781e929aedbd 171-173
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "4a08ac2bda01778d149ba0f41e679608bee10ef8",
+  "prompts": {},
+  "sessions": {
+    "s_b9f3ac61b57ca8": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d4c50cfe-52e2-415e-a77a-3d2fa06185b6",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jainal Gosaliya <jainal09gosalia@gmail.com>"
+    }
+  }
+}

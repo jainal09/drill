@@ -1,0 +1,38 @@
+docs/wsl.md
+  s_b9f3ac61b57ca8::t_3ff5c565703dda 145
+docs/verify.md
+  s_b9f3ac61b57ca8::t_45942fc837d12f 21-24
+docs/explorer.md
+  s_b9f3ac61b57ca8::t_bbeb5c691a23c5 1-60
+docs/testing.md
+  s_b9f3ac61b57ca8::t_3150e70b946ed0 14-16
+  s_b9f3ac61b57ca8::t_0cbeb67b66ede1 22
+  s_b9f3ac61b57ca8::t_ff3e89e2008657 8
+README.md
+  s_b9f3ac61b57ca8::t_1bb82231f57fa4 87-91
+  s_b9f3ac61b57ca8::t_aea98d9a691ae1 100
+  s_b9f3ac61b57ca8::t_8155ccbdf09520 184
+  s_b9f3ac61b57ca8::t_20f2ed1dff78b3 116-131
+KEYS.md
+  s_b9f3ac61b57ca8::t_6da7219cf1faf5 23
+  s_b9f3ac61b57ca8::t_d3542342658fdc 246-269
+docs/macos-cmd.md
+  s_b9f3ac61b57ca8::t_a7724ee4da30ba 45
+  s_b9f3ac61b57ca8::t_ec43a602a7fc14 60
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "5991681e206af357ef1e226fc1c764c380333fce",
+  "prompts": {},
+  "sessions": {
+    "s_b9f3ac61b57ca8": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d4c50cfe-52e2-415e-a77a-3d2fa06185b6",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jainal Gosaliya <jainal09gosalia@gmail.com>"
+    }
+  }
+}
