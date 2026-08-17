@@ -1,0 +1,24 @@
+install.sh
+  s_b9f3ac61b57ca8::t_cb22389074eab7 209-211
+  s_b9f3ac61b57ca8::t_97ba32e16196bb 319,326
+  s_b9f3ac61b57ca8::t_dbf21b35a7b8a0 187,189-190
+  s_b9f3ac61b57ca8::t_2b612bf5b992f0 339-349
+  s_b9f3ac61b57ca8::t_0d1f80bc6ebbb6 145
+  s_b9f3ac61b57ca8::t_b387601ae6cf76 94,96,100,104,108,112
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "83a7a260da6abe8964227fce3efcbb0c6565c3bb",
+  "prompts": {},
+  "sessions": {
+    "s_b9f3ac61b57ca8": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d4c50cfe-52e2-415e-a77a-3d2fa06185b6",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jainal Gosaliya <jainal09gosalia@gmail.com>"
+    }
+  }
+}
