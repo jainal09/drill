@@ -271,6 +271,38 @@ def main():
         ok("jitter_drag_is_a_click", q("expand('%:t')") == "a.py", q("expand('%:t')"))
         ok("jitter_moved_nothing", os.path.exists(os.path.join(root, "a.py")),
            str(os.listdir(root)))
+
+        # ---- three windows: tree + file + interpreter ---------------------
+        # <C-e> opens the REPL botright, spanning the full width UNDER the
+        # tree -- the IDE layout. The tree must survive it.
+        press("\x05", 3.5)
+        ok("repl_opens_under_tree", q("winnr('$')") == "3", q("winnr('$')"))
+        ok("repl_lands_at_prompt", q("mode(1)") == "t", q("mode(1)"))
+        ok("tree_survives_repl", tree_win() != "-1", tree_win())
+
+        # a file opened from the tree must land in the FILE window -- the
+        # window_picker excludes terminals -- never in the interpreter
+        click(3, row_of("zz.py"), w=1.2)
+        ok("tree_open_lands_in_file_window",
+           q("expand('%:t')") == "zz.py" and q("&buftype") == "",
+           "%s buftype=%r" % (q("expand('%:t')"), q("&buftype")))
+        ok("repl_survives_tree_open", q("winnr('$')") == "3", q("winnr('$')"))
+
+        # drill's own keys pressed IN the tree: never a traceback behind a
+        # modal, never a stray window -- the netrw contract, kept here too
+        click(3, row_of("sub"), w=0.8)                   # focus the tree
+        press("\x13", 1.0)                               # Ctrl+S
+        ok("ctrl_s_in_tree_no_wedge", q("mode(1)") != "<WEDGED>", q("mode(1)"))
+        ok("ctrl_s_in_tree_no_window", q("winnr('$')") == "3", q("winnr('$')"))
+        press("\x05", 2.0)                               # Ctrl+E from the tree
+        ok("ctrl_e_in_tree_no_wedge", q("mode(1)") != "<WEDGED>", q("mode(1)"))
+        ok("ctrl_e_in_tree_no_extra_window", q("winnr('$')") == "3", q("winnr('$')"))
+
+        # Ctrl+B from inside the tree still closes it, and you land typing
+        press("\x02", 1.0)
+        ok("ctrl_b_in_tree_closes_it", q("winnr('$')") == "2", q("winnr('$')"))
+        ok("typing_after_tree_close_with_repl",
+           q("mode(1)") in ("i", "t"), q("mode(1)"))
     finally:
         subprocess.run(["nvim", "--server", SOCK, "--remote-send", "<C-\\><C-n>:qa!<CR>"],
                        capture_output=True, stdin=subprocess.DEVNULL)
