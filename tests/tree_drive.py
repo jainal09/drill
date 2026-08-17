@@ -231,6 +231,46 @@ def main():
         ok("file_right_click_stays_stock", "New file" not in seen, seen[-200:])
         press("\x1b", 0.5)
         ok("no_wedge_after_stock_menu", q("mode(1)") != "<WEDGED>", q("mode(1)"))
+
+        # ---- ctrl-click multi-select --------------------------------------
+        def mark_count():
+            return q('luaeval("#require(\\"nvim-tree.api\\").marks.list()")')
+
+        click(3, row_of("b.py"), button=16, w=0.6)       # Ctrl = +16 in SGR
+        ok("ctrl_click_marks_one", mark_count() == "1", mark_count())
+        click(3, row_of("d.py"), button=16, w=0.6)
+        ok("ctrl_click_marks_two", mark_count() == "2", mark_count())
+
+        # ---- drag and drop ------------------------------------------------
+        # e.py is NOT marked: dragging it onto sub/ moves it alone, and the
+        # marked pair stays marked
+        drag(3, row_of("e.py"), 3, row_of("sub"), w=1.5)
+        ok("drag_moves_file_into_folder",
+           poll(os.path.join(root, "sub", "e.py")) and
+           poll(os.path.join(root, "e.py"), want=False),
+           "sub/e.py=%s root/e.py=%s" % (os.path.exists(os.path.join(root, "sub", "e.py")),
+                                         os.path.exists(os.path.join(root, "e.py"))))
+        ok("marks_survive_unmarked_drag", mark_count() == "2", mark_count())
+
+        # b.py IS marked: dragging it takes d.py along
+        drag(3, row_of("b.py"), 3, row_of("sub"), w=1.5)
+        ok("drag_marked_pair_moves_both",
+           poll(os.path.join(root, "sub", "b.py")) and
+           poll(os.path.join(root, "sub", "d.py")) and
+           poll(os.path.join(root, "b.py"), want=False) and
+           poll(os.path.join(root, "d.py"), want=False),
+           str(sorted(os.listdir(os.path.join(root, "sub")))))
+        ok("marks_clear_after_marked_drag", mark_count() == "0", mark_count())
+
+        # a press that drifts one cell before the button comes up is a CLICK
+        # that jittered, not a drag -- same contract as mouse_drive.py
+        ra = row_of("a.py")
+        press("\x1b[<0;3;%dM" % ra, 0.12)
+        press("\x1b[<32;4;%dM" % ra, 0.12)
+        press("\x1b[<0;4;%dm" % ra, 1.0)
+        ok("jitter_drag_is_a_click", q("expand('%:t')") == "a.py", q("expand('%:t')"))
+        ok("jitter_moved_nothing", os.path.exists(os.path.join(root, "a.py")),
+           str(os.listdir(root)))
     finally:
         subprocess.run(["nvim", "--server", SOCK, "--remote-send", "<C-\\><C-n>:qa!<CR>"],
                        capture_output=True, stdin=subprocess.DEVNULL)

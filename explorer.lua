@@ -101,6 +101,25 @@ function M.setup(h)
         vim.api.nvim_replace_termcodes("<RightMouse>", true, true, true), "n", false)
     end
   end, { silent = true })
+
+  -- Ctrl-click multi-select, same shape as right-click and global for the
+  -- same routing reason. Outside the tree it re-feeds a PLAIN press, which
+  -- is exactly what the mouse section's Ctrl-stripping maps did before this
+  -- override -- nvim's stock <C-LeftMouse> is a tag jump that wedges a
+  -- tagless editor behind a modal E426. On a tree row it toggles the mark
+  -- (rendered as *), and a later drag of any marked row moves the whole set.
+  vim.keymap.set({ "n", "i" }, "<C-LeftMouse>", function()
+    local mp = vim.fn.getmousepos()
+    local b = mp.winid ~= 0 and vim.api.nvim_win_get_buf(mp.winid)
+    if b and vim.bo[b].filetype == "NvimTree" and mp.line > 0 then
+      vim.api.nvim_set_current_win(mp.winid)
+      pcall(vim.api.nvim_win_set_cursor, mp.winid, { mp.line, 0 })
+      require("nvim-tree.api").marks.toggle()
+    else
+      vim.api.nvim_feedkeys(
+        vim.api.nvim_replace_termcodes("<LeftMouse>", true, true, true), "n", false)
+    end
+  end, { silent = true })
   ready = true
 end
 
@@ -186,12 +205,69 @@ function tree_menu()
   require("menu").open(menu_items(), { mouse = true, border = true })
 end
 
+-- ----------------------------------------------------------------------------
+-- Drag a file onto a folder to move it. No plugin ships this; the events do:
+-- the press parks the cursor on the source row (built-in), the first
+-- <LeftDrag> report snapshots that node, and the release resolves the row
+-- under the mouse into the destination. Dropping on a folder moves INTO it,
+-- on a file moves NEXT TO it (paste targets the node's directory), and a
+-- release back on the source row is not a drag at all -- that is a trackpad
+-- click that jittered, the exact gesture mouse_drive.py's jitter cases exist
+-- for, and it falls through to the ordinary click below.
+--
+-- If the dragged node is one of the marked ones (ctrl-click, below), the
+-- whole marked set rides along: cut accumulates, one paste moves them all.
+
+local drag_src = nil
+
+local function node_at(row)
+  local api = require("nvim-tree.api")
+  local win = vim.fn.bufwinid(vim.api.nvim_get_current_buf())
+  pcall(vim.api.nvim_win_set_cursor, win, { row, 0 })
+  return api.tree.get_node_under_cursor()
+end
+
+local function drop(src, target)
+  local api = require("nvim-tree.api")
+  local moving = { src }
+  local marks = api.marks.list()
+  for _, n in ipairs(marks) do
+    if n.absolute_path == src.absolute_path then
+      moving = marks                       -- dragged one of the marked: all go
+      break
+    end
+  end
+  for _, n in ipairs(moving) do api.fs.cut(n) end
+  api.fs.paste(target)
+  api.fs.clear_clipboard()
+  if moving == marks then api.marks.clear() end
+  api.tree.reload()
+end
+
 -- A left-click, decomposed. The press already moved the cursor to the row
 -- (built-in), so the release only has to act on the node under it. Guard on
 -- getmousepos().line == 0: that is the winbar, whose clicks belong to the
 -- %@ handlers above, not to the tree.
+local function tree_drag()
+  if drag_src == nil then
+    -- first motion report of this gesture: the press has already parked the
+    -- cursor on the source row, so this IS the source
+    drag_src = require("nvim-tree.api").tree.get_node_under_cursor() or false
+  end
+end
+
 local function tree_click()
-  if vim.fn.getmousepos().line == 0 then return end
+  local mp = vim.fn.getmousepos()
+  local src = drag_src
+  drag_src = nil
+  if mp.line == 0 then return end
+  if src and mp.line > 0 then
+    local target = node_at(mp.line)
+    if target and src.absolute_path and target.absolute_path
+       and target.absolute_path ~= src.absolute_path then
+      return drop(src, target)
+    end
+  end
   local api = require("nvim-tree.api")
   local node = api.tree.get_node_under_cursor()
   if not node then return end
@@ -206,6 +282,9 @@ end
 function M.attach(bufnr)
   require("nvim-tree.api").config.mappings.default_on_attach(bufnr)
   vim.keymap.set("n", "<LeftRelease>", tree_click, { buffer = bufnr, silent = true })
+  -- deliberately NOT re-fed to the built-in: the default drag grows a
+  -- character-wise selection across tree rows, which is noise here
+  vim.keymap.set("n", "<LeftDrag>", tree_drag, { buffer = bufnr, silent = true })
 
   -- Window-local dressing, scheduled: on_attach runs while nvim-tree is
   -- still assembling the window, and bufwinid needs the finished layout.
