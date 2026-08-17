@@ -218,7 +218,7 @@ t cmd_bs_deletes_to_line_start \
 # normal -- so one reflexive Cmd+W from a mac hand would spray notation
 # into the file.
 t cmd_floor_swallows_unbound_chords \
-   --content 'alpha' --keys '<D-w><D-b><D-n>Z<Esc>' --expect 'Zalpha'
+   --content 'alpha' --keys '<D-w><D-g><D-n>Z<Esc>' --expect 'Zalpha'
 
 t cmd_floor_keeps_selection_intact \
    --content 'alpha bravo' --keys "${SEL5}<D-w>Z" --expect 'Z bravo'

@@ -1314,6 +1314,35 @@ for _, m in ipairs({
 end
 
 -- ---------------------------------------------------------------------------
+-- The file-explorer sidebar  --  Ctrl+B (and Cmd+B, bound in the mac section)
+--
+-- The one deliberate exception to "no plugins". All of it lives in
+-- explorer.lua and the pinned checkouts under vendor/, and none of it is
+-- loaded -- not even added to 'runtimepath' -- until the first toggle, so an
+-- editor that never presses Ctrl+B runs exactly the config it always has.
+-- Ctrl+B is bound in n/i only, deliberately: in cmdline it is
+-- cursor-to-start at the / prompt this config leans on, and in the
+-- interpreter it is readline's backward-char (and tmux's prefix). Cmd+B
+-- covers the interpreter instead.
+local explorer = nil
+local function tree_toggle()
+  vim.cmd("stopinsert")
+  if explorer == nil then
+    local here = vim.fn.fnamemodify(debug.getinfo(1, "S").source:sub(2), ":p:h")
+    local ok, mod = pcall(dofile, here .. "/explorer.lua")
+    explorer = (ok and mod) or false
+    if explorer then explorer.setup({ type_here = type_here }) end
+  end
+  if not explorer then
+    vim.notify("drill: explorer.lua failed to load -- reinstall or git pull",
+      vim.log.levels.WARN)
+    return
+  end
+  explorer.toggle()
+end
+map({ "n", "i" }, "<C-b>", tree_toggle, S)
+
+-- ---------------------------------------------------------------------------
 -- Quit  --  Ctrl+Shift+Q
 --
 -- Getting out was the last thing that still needed a command line: Esc, then
@@ -1503,6 +1532,11 @@ local function copy_line()
 end
 
 map({ "n", "v", "i" }, "<D-s>", save, S)
+
+-- Cmd+B mirrors Ctrl+B, plus terminal mode: ^B belongs to readline in the
+-- interpreter, but Cmd+B arrives as CSI-u and python never sees it, so the
+-- sidebar is reachable from the REPL too.
+map({ "n", "i", "t" }, "<D-b>", tree_toggle, S)
 
 map({ "x", "s" }, "<D-c>", copy_selection, S)
 map({ "n", "i" }, "<D-c>", copy_line, S)

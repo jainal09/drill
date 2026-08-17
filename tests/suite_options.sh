@@ -167,6 +167,23 @@ ok("cmdkey_c_floored_in_terminal", vim.fn.maparg("<D-c>", "t"):lower() == "<nop>
 -- insert Shift+Tab dedent (i_CTRL-D), the pair of selection Tab/S-Tab
 ok("stab_insert_bound", vim.fn.maparg("<S-Tab>", "i"):lower() == "<c-d>",
    vim.fn.maparg("<S-Tab>", "i"))
+-- the sidebar toggle. Ctrl+B in normal and insert only: in cmdline it is
+-- cursor-to-start at the / prompt, and in the interpreter it is readline
+-- backward-char (and the tmux prefix) -- Cmd+B covers the interpreter, where
+-- CSI-u keeps it off the python wire.
+for _, m in ipairs({"n", "i"}) do
+  ok("tree_ctrl_b_bound_" .. m, vim.fn.maparg("<C-b>", m) ~= "" or
+     vim.fn.maparg("<C-b>", m, false, true).callback ~= nil, vim.fn.maparg("<C-b>", m))
+end
+for _, m in ipairs({"c", "t"}) do
+  ok("tree_ctrl_b_free_" .. m, vim.fn.maparg("<C-b>", m) == "" and
+     vim.fn.maparg("<C-b>", m, false, true).callback == nil, tostring(vim.fn.maparg("<C-b>", m)))
+end
+for _, m in ipairs({"n", "i", "t"}) do
+  local d = vim.fn.maparg("<D-b>", m, false, true)
+  ok("tree_cmd_b_bound_" .. m, d.callback ~= nil and (d.rhs or ""):lower() ~= "<nop>",
+     tostring(d.rhs))
+end
 -- quit. Bound in terminal too, so you can leave from inside the interpreter --
 -- python has no use for <C-S-q>. <C-q> must stay VISUAL BLOCK: the two are only
 -- separate keys because CSI-u keeps Shift on a control chord.

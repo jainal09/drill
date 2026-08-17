@@ -12,3 +12,6 @@ __pycache__/
 
 # headless test harness scratch
 tests/work/
+
+# pinned third-party checkouts for the sidebar -- vendor.sh recreates them
+vendor/
