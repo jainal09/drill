@@ -1,0 +1,19 @@
+nvimrc.lua
+  s_b9f3ac61b57ca8::t_6eb6b89303ad11 1230-1245
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "9a1a3c2af20bc9e410d7bb9559425b6d7c33454b",
+  "prompts": {},
+  "sessions": {
+    "s_b9f3ac61b57ca8": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d4c50cfe-52e2-415e-a77a-3d2fa06185b6",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jainal Gosaliya <jainal09gosalia@gmail.com>"
+    }
+  }
+}
