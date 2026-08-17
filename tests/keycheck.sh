@@ -19,15 +19,20 @@ printf '\n'
 
 cleanup() { printf '\033[<u'; stty "$SAVED" 2>/dev/null; }
 SAVED=$(stty -g)
-trap cleanup EXIT INT
+# QUIT and HUP as well as INT: 'isig' below hands the terminal back the signal
+# keys, and an untrapped one of those would exit without running the EXIT trap
+# -- leaving the caller in raw mode with the protocol still pushed.
+trap cleanup EXIT INT TERM QUIT HUP
 
 printf '\033[>1u'                               # the protocol nvim negotiates
-stty raw -echo
+# isig, because plain 'raw' clears it: Ctrl+C would then arrive as a byte in
+# BYTES and the script would report "something arrived" for a user giving up.
+stty raw -echo isig
 
-printf 'Press ONE Cmd chord now, e.g. Cmd+Z (waiting 6 seconds)...\r\n'
+printf 'Press ONE Cmd chord now, e.g. Cmd+Z (Ctrl+C aborts; waiting 6 seconds)...\r\n'
 BYTES=$(dd bs=1 count=32 2>/dev/null <&0 & sleep 6; kill $! 2>/dev/null; wait 2>/dev/null)
 
-cleanup; trap - EXIT INT
+cleanup; trap - EXIT INT TERM QUIT HUP
 printf '\n\n'
 if [ -z "$BYTES" ]; then
   printf 'RESULT: nothing arrived -- this terminal did NOT forward the chord.\n'
