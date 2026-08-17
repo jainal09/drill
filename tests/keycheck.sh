@@ -19,10 +19,16 @@ printf '\n'
 
 cleanup() { printf '\033[<u'; stty "$SAVED" 2>/dev/null; }
 SAVED=$(stty -g)
-# QUIT and HUP as well as INT: 'isig' below hands the terminal back the signal
-# keys, and an untrapped one of those would exit without running the EXIT trap
-# -- leaving the caller in raw mode with the protocol still pushed.
-trap cleanup EXIT INT TERM QUIT HUP
+# 'isig' below hands the terminal back its signal keys, so they have to land
+# somewhere: cleanup rides EXIT alone, and each signal EXITS to get there. A
+# bare "trap cleanup INT" would not do -- bash runs the handler and then
+# RESUMES the script, so a Ctrl+C would restore the terminal and then still
+# report "nothing arrived", calling a deliberate abort a failed forward.
+trap cleanup EXIT
+trap 'exit 130' INT
+trap 'exit 143' TERM
+trap 'exit 131' QUIT
+trap 'exit 129' HUP
 
 printf '\033[>1u'                               # the protocol nvim negotiates
 # isig, because plain 'raw' clears it: Ctrl+C would then arrive as a byte in
