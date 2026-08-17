@@ -1,0 +1,22 @@
+tests/keycheck.sh
+  s_b9f3ac61b57ca8::t_62ff0f10b12a22 22-25,28-30,32
+  s_b9f3ac61b57ca8::t_787006e2b96e27 35
+tests/mouse_drive.py
+  s_b9f3ac61b57ca8::t_863ec1ab4c4a0c 183-240,273
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "d6b70394aee6f4018ca8b494e5f8a662065ae285",
+  "prompts": {},
+  "sessions": {
+    "s_b9f3ac61b57ca8": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d4c50cfe-52e2-415e-a77a-3d2fa06185b6",
+        "model": "claude-fable-5"
+      },
+      "human_author": null
+    }
+  }
+}
