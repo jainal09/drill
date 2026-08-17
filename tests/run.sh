@@ -40,6 +40,13 @@ if [ ! -f "$DRILL_CONFIG" ]; then
 fi
 command -v nvim >/dev/null || { echo "run.sh: nvim not on PATH" >&2; exit 2; }
 
+# The sidebar suite drives the vendored plugins, so bring them to their pins
+# first. Already there, this is an offline no-op; genuinely unfetchable (no
+# network, no checkouts) it warns here and suite_tree fails loudly below --
+# a gate that silently skipped a feature would be reporting coverage it
+# does not have.
+"$(cd "$DIR/.." && pwd)/vendor.sh" || echo "run.sh: WARNING -- vendor.sh failed; the sidebar suite will fail"
+
 # The config sets clipboard=unnamedplus, and several cases in suite_config.sh
 # assert the REAL '+' register. With no provider those fail for a reason that
 # has nothing to do with the keybinding under test, and read as a regression in
@@ -177,6 +184,7 @@ run "autosave"                      suite_autosave.sh
 run "quit confirmation"             suite_quit.sh
 run "run-window lifecycle"          suite_runwin.sh
 run "directory listing"             suite_netrw.sh
+run "file explorer sidebar"         suite_tree.sh
 run "shell: timer"                  suite_timer.sh
 run "shell: projects + search"      suite_projects.sh
 run "preload: the LeetCode desk"    suite_preload.sh

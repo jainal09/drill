@@ -70,7 +70,71 @@ function M.setup(h)
     },
     on_attach = function(bufnr) M.attach(bufnr) end,
   })
+
+  -- drill lives in insert mode, and a mouse press from insert FOCUSES the
+  -- tree while STAYING in insert -- measured: mode "i", filetype NvimTree --
+  -- so the release arrived in a mode none of the tree's mappings own and
+  -- every click ate itself. There is nothing to type in a tree: entering it,
+  -- by any route, lands you in Normal, and every gesture below can assume it.
+  vim.api.nvim_create_autocmd("WinEnter", {
+    group = vim.api.nvim_create_augroup("DrillTree", { clear = true }),
+    callback = function()
+      if vim.bo.filetype == "NvimTree" then vim.cmd("stopinsert") end
+    end,
+  })
   ready = true
+end
+
+-- ----------------------------------------------------------------------------
+-- The toolbar: real clickable [+ File] / [+ Folder] buttons, because "press a"
+-- is not a button. The winbar takes %@handler@label%X click regions (core
+-- since 0.8), and the handlers must be globals for v:lua to reach them --
+-- namespaced DrillTree* so they collide with nothing.
+--
+-- Both prompt for the name with vim.ui.input, seeded with the directory the
+-- tree cursor is on (a folder row means "in here", a file row means "next to
+-- me") -- click a folder, click the button, type a name. The folder button
+-- does NOT ride api.fs.create's trailing-slash convention: that is the same
+-- keyboard folklore the button exists to retire. mkdir -p, reload, done.
+
+local function cursor_dir()
+  local api = require("nvim-tree.api")
+  local node = api.tree.get_node_under_cursor()
+  if node and node.nodes then return node.absolute_path end        -- a folder
+  if node and node.parent then return node.parent.absolute_path end
+  return vim.fn.getcwd()
+end
+
+function _G.DrillTreeNewFile()
+  require("nvim-tree.api").fs.create()
+end
+
+function _G.DrillTreeNewFolder()
+  local base = cursor_dir()
+  vim.ui.input({ prompt = "New folder: ", default = base .. "/" }, function(path)
+    if not path or path == "" or path:sub(-1) == "/" then return end
+    vim.fn.mkdir(path, "p")
+    require("nvim-tree.api").tree.reload()
+  end)
+end
+
+local TOOLBAR = table.concat({
+  " %@v:lua.DrillTreeNewFile@[+ File]%X",
+  "%@v:lua.DrillTreeNewFolder@[+ Folder]%X",
+}, "  ")
+
+-- A left-click, decomposed. The press already moved the cursor to the row
+-- (built-in), so the release only has to act on the node under it. Guard on
+-- getmousepos().line == 0: that is the winbar, whose clicks belong to the
+-- %@ handlers above, not to the tree.
+local function tree_click()
+  if vim.fn.getmousepos().line == 0 then return end
+  local api = require("nvim-tree.api")
+  local node = api.tree.get_node_under_cursor()
+  if not node then return end
+  -- open.edit on a folder toggles it, on a file opens it through the
+  -- window_picker excludes -- one click for both, no double-click folklore
+  api.node.open.edit(node)
 end
 
 -- Buffer-local extras on top of nvim-tree's stock keymap. Buffer-local is
@@ -78,6 +142,18 @@ end
 -- the mouse section left them, and nothing here may show up there.
 function M.attach(bufnr)
   require("nvim-tree.api").config.mappings.default_on_attach(bufnr)
+  vim.keymap.set("n", "<LeftRelease>", tree_click, { buffer = bufnr, silent = true })
+
+  -- Window-local dressing, scheduled: on_attach runs while nvim-tree is
+  -- still assembling the window, and bufwinid needs the finished layout.
+  vim.schedule(function()
+    local win = vim.fn.bufwinid(bufnr)
+    if win == -1 then return end
+    -- global virtualedit=all is the click-anywhere ghost space; in a tree it
+    -- would let the caret float past the end of a filename
+    vim.wo[win].virtualedit = "none"
+    vim.wo[win].winbar = TOOLBAR
+  end)
 end
 
 function M.toggle()
