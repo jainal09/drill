@@ -42,6 +42,7 @@ So drill binds every editor chord on Cmd too, same modes, same handlers:
 | `Cmd+Z` | undo |
 | `Cmd+Shift+Z` | redo (the mac redo; `Ctrl+Y` still works everywhere) |
 | `Cmd+/` | comment / uncomment |
+| `Cmd+B` | the file sidebar — including from the REPL, where `Ctrl+B` is left to readline |
 | `Cmd+Q` | quit, with the same confirmation as `Ctrl+Shift+Q` |
 | `Cmd+←` / `Cmd+→` | start / end of line |
 | `Cmd+↑` / `Cmd+↓` | start / end of file |
@@ -56,7 +57,7 @@ like Shift+arrows and typing over that selection replaces it.
 an *unmapped* forwarded chord does not die quietly in nvim — measured, a bare
 `<D-w>` typed the literal text `<D-w>` into the buffer in insert, replaced
 the selection with it in Select mode, and ate a character in normal mode. So
-a reflexive Cmd+W or Cmd+B from a mac hand would spray key notation into
+a reflexive Cmd+W or Cmd+N from a mac hand would spray key notation into
 your file. drill floors every printable Cmd chord to a no-op — in the REPL
 too, where the junk would have gone to python — and binds the useful ones on
 top.

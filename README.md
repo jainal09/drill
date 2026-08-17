@@ -84,7 +84,11 @@ And underneath it is still real Neovim: `hjkl`, `dd`, `ciw`, macros and
 
 ## Fast enough to keep a thought
 
-Two files. No plugins, no plugin manager, no LSP, no startup spinner. From any
+No plugin manager, no LSP, no startup spinner. One deliberate exception to
+"no plugins": the optional `Ctrl+B` file sidebar is three checkouts pinned to
+exact commits, fetched once by `vendor.sh`, and **loaded only the first time
+you press the key** — never toggle it and nothing is even added to the
+runtime path. From any
 terminal, mid-thought, you're in the editor before the thought fades — and
 everything **auto-saves** about 0.7s after you stop typing, plus instantly when
 you switch away. Quit whenever; `d two-sum` brings it all back. You never lose
@@ -93,7 +97,7 @@ work, because there is no unsaved state to lose.
 ## Nothing helps you type
 
 No autocomplete. No LSP, no Copilot, no snippets, no signature hints, no
-auto-import. Not "turned off" — **absent, at every source, and a 558-case test
+auto-import. Not "turned off" — **absent, at every source, and a 719-case test
 suite asserts it**. Syntax highlighting is the only thing on screen besides your
 own keystrokes. Your `~/.config/nvim` and `~/.vimrc` are never touched; the
 config loads with `nvim -u` and exists only inside drill.
@@ -108,6 +112,22 @@ t -k      # stop
 ```
 
 Non-blocking, with a sound and a desktop notification at zero.
+
+## `Ctrl+B` — a file sidebar, when you want one
+
+The one optional extra: press `Ctrl+B` (or `Cmd+B` on a Mac that forwards it,
+REPL included) and a file tree slides in on the left — press again and it is
+gone, with your caret still in your code either way. It is built for the
+mouse: **one click** opens a file or folds a folder, **`[+ File]` /
+`[+ Folder]` are real clickable buttons**, **right-click** gets a menu (new,
+rename, cut/copy/paste, delete, open in split), **Ctrl+click** multi-selects,
+and **dragging a file onto a folder moves it** — drag a selected one and the
+whole selection moves. Details: [docs/explorer.md](docs/explorer.md).
+
+This is drill's only plugin-powered feature, and it stays out of the way: the
+three checkouts are pinned to exact commits and load lazily on the first
+press, so an editor that never opens the sidebar runs exactly the config it
+always has.
 
 ## The quality-of-life layer
 
@@ -161,7 +181,7 @@ so `git pull` stays clean forever.
 | [KEYS.md](KEYS.md) | every keybinding, every conflict, and how each is resolved |
 | [docs/design.md](docs/design.md) | why the editor behaves the way it does — the mouse, autosave, search, quitting, and the five deliberate trade-offs |
 | [docs/verify.md](docs/verify.md) | prove nothing is helping you, and that your own nvim is untouched |
-| [docs/testing.md](docs/testing.md) | the 558-case gate that drives the real config with real keycodes |
+| [docs/testing.md](docs/testing.md) | the 719-case gate that drives the real config with real keycodes |
 | [docs/recording.md](docs/recording.md) | `demo.sh` — the self-driving tour that recorded the video above |
 | [docs/wsl.md](docs/wsl.md) | WSL: the clipboard, the timer's sound and notification, and the one thing you have to check by hand |
 

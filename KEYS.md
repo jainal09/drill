@@ -20,6 +20,7 @@ Syntax highlighting only. No completion, no LSP, no snippets, no AI.
 | `Ctrl+Shift+Z` | redo (needs a terminal that speaks CSI-u) | normal, insert, visual |
 | `Tab` | indent the selected lines | **selection only** |
 | `Shift+Tab` | unindent the selected lines — or, in insert, the line you are on | selection, insert |
+| `Ctrl+B` | **show / hide the file sidebar** (see its own section below) | normal, insert |
 | `Ctrl+Q` | visual block (was `Ctrl+V`) | normal, visual |
 | `Ctrl+Shift+Q` | **quit, with a confirmation** | normal, insert, **and inside the REPL** — except on a terminal with no CSI-u, where **normal mode is not covered**; see below |
 | **Shift+arrows** | **select, like any other editor** | normal, insert |
@@ -241,6 +242,30 @@ Costs: `Ctrl+R` was normal-mode redo (use `Ctrl+Y`), `Ctrl+E` was scroll-down.
 
 To scroll back through output, `Ctrl+\` `Ctrl+N` first — otherwise the wheel
 goes to python.
+
+## The file sidebar
+
+`Ctrl+B` shows and hides it (`Cmd+B` too on a forwarding terminal — including
+from inside the REPL, where `Ctrl+B` is deliberately left to readline). It
+opens without stealing your caret: the tree appears on the left and you are
+still typing in your code. The mouse is how you use it:
+
+| Gesture | Does |
+|---|---|
+| click a file | open it — in the file window, never the interpreter |
+| click a folder | fold / unfold |
+| `[+ File]` / `[+ Folder]` | clickable buttons in the tree's top bar; type the name at the prompt |
+| right-click | menu: new file/folder, open, open in split, rename, cut, copy, paste, delete |
+| Ctrl+click | select several (marked with `*`) |
+| drag onto a folder | **move it there** — drag a marked row and the whole selection moves |
+
+A drag released back on its own row is treated as a click that jittered, not
+a move — same trackpad rule as everywhere else in drill. `Ctrl+B` is *not*
+bound at the `/` prompt (there it stays cursor-to-start) or in the REPL
+(readline's backward-char; tmux users keep their prefix too) — that is what
+`Cmd+B` is for. The sidebar is drill's one plugin-powered feature; it loads
+on first press and never before, and `Ctrl+S`/`Ctrl+E`/`Ctrl+R` pressed in
+the tree do nothing, exactly as in the directory listing below.
 
 ## The directory listing
 

@@ -18,7 +18,10 @@ And confirm it left your own setup alone: run plain `nvim` and check
 - No autocomplete, no LSP, no Copilot, no AI, no snippet expansion
 - No linter suggestions, no auto-import, no signature hints
 - Syntax highlighting only — nothing else appears on screen while you type
-- No plugin manager, no distro
+- No plugin manager, no distro. The one exception to "no plugins" is the
+  optional `Ctrl+B` sidebar: three checkouts pinned to exact commits by
+  `vendor.sh`, loaded only when you first press the key, and none of them
+  touches what appears while you type
 - No swapfile, no backup, no undo file — the directory holds the `.py` you
   wrote and nothing else
 - Stock Python 3, Neovim and fzf — and fzf only powers `d search`, never the
