@@ -1,0 +1,21 @@
+nvimrc.lua
+  s_b9f3ac61b57ca8::t_be8f123689a65c 1464-1468,1472,1477
+tests/suite_options.sh
+  s_b9f3ac61b57ca8::t_7997f6b1f642f5 150-158
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "ec0a101c339386546d12b8a8282ddfb7ff51bc2e",
+  "prompts": {},
+  "sessions": {
+    "s_b9f3ac61b57ca8": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d4c50cfe-52e2-415e-a77a-3d2fa06185b6",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jainal Gosaliya <jainal09gosalia@gmail.com>"
+    }
+  }
+}
