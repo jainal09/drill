@@ -1,0 +1,33 @@
+README.md
+  s_b9f3ac61b57ca8::t_540fb29aa21927 100,184
+docs/explorer.md
+  s_b9f3ac61b57ca8::t_ff903218b1893c 68-75
+  s_b9f3ac61b57ca8::t_3772bec3c9028d 9-15
+KEYS.md
+  s_b9f3ac61b57ca8::t_d4df0c67240d2d 251-253
+docs/testing.md
+  s_b9f3ac61b57ca8::t_540fb29aa21927 8
+  s_b9f3ac61b57ca8::t_5940928221465a 22
+docs/wsl.md
+  s_b9f3ac61b57ca8::t_540fb29aa21927 145
+explorer.lua
+  s_b9f3ac61b57ca8::t_e4bcb75ffa8841 306-312,316-322
+tests/tree_drive.py
+  s_b9f3ac61b57ca8::t_a48ea5a611af84 306-333
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "471810f2690c87016ff4985feae4142c7d9009c4",
+  "prompts": {},
+  "sessions": {
+    "s_b9f3ac61b57ca8": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d4c50cfe-52e2-415e-a77a-3d2fa06185b6",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jainal Gosaliya <jainal09gosalia@gmail.com>"
+    }
+  }
+}
