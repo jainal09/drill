@@ -1461,19 +1461,20 @@ end
 -- and ate a character. So one reflexive Cmd+W or Cmd+B from a mac hand would
 -- spray notation into the file. Every printable Cmd chord is floored to
 -- <Nop> here -- including terminal mode, where the junk would have gone to
--- python -- and the chords with real jobs are bound AFTERWARDS, overwriting
--- their slot. pcall, because a couple of punctuation spellings ("<D->>") may
--- not parse on every nvim; a skipped floor there is the pre-existing
--- behaviour, not a regression.
+-- python, and the command line, where a Cmd+W at the ':' prompt left a stray
+-- "w" sitting in the command -- and the chords with real jobs are bound
+-- AFTERWARDS, overwriting their slot. pcall, because a couple of punctuation
+-- spellings ("<D->>") may not parse on every nvim; a skipped floor there is
+-- the pre-existing behaviour, not a regression.
 local D_NAMED = { [32] = "<D-Space>", [60] = "<D-lt>", [124] = "<D-Bar>" }
 for i = 32, 126 do
   local k = D_NAMED[i] or ("<D-" .. string.char(i) .. ">")
-  for _, mode in ipairs({ "n", "i", "x", "s", "t" }) do
+  for _, mode in ipairs({ "n", "i", "x", "s", "t", "c" }) do
     pcall(map, mode, k, "<Nop>", S)
   end
 end
 for _, k in ipairs({ "<D-CR>", "<D-BS>" }) do
-  for _, mode in ipairs({ "n", "i", "x", "s", "t" }) do
+  for _, mode in ipairs({ "n", "i", "x", "s", "t", "c" }) do
     pcall(map, mode, k, "<Nop>", S)
   end
 end

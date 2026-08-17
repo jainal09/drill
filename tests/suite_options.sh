@@ -147,10 +147,15 @@ ok("cmdkey_bs_is_ctrl_u", vim.fn.maparg("<D-BS>", "i"):lower() == "<c-u>",
    vim.fn.maparg("<D-BS>", "i"))
 -- every OTHER Cmd chord is floored to <Nop> -- unmapped, a forwarded <D-w>
 -- typed the literal text "<D-w>" into the buffer. Spot-check the floor in
--- every mode, terminal included (there the junk would have gone to python).
-for _, m in ipairs({"n", "i", "x", "s", "t"}) do
-  ok("cmdfloor_" .. m, vim.fn.maparg("<D-w>", m):lower() == "<nop>",
-     vim.fn.maparg("<D-w>", m))
+-- every mode, terminal included (there the junk would have gone to python)
+-- and the command line (there it landed in the ':' prompt). The keys are the
+-- spellings most likely to regress: the plain letter plus the three the
+-- generator has to name by hand and a digit.
+for _, m in ipairs({"n", "i", "x", "s", "t", "c"}) do
+  for _, k in ipairs({"<D-w>", "<D-Space>", "<D-lt>", "<D-Bar>", "<D-1>"}) do
+    ok("cmdfloor_" .. k .. "_" .. m, vim.fn.maparg(k, m):lower() == "<nop>",
+       vim.fn.maparg(k, m))
+  end
 end
 -- terminal mode gets paste, quit and the floor and NOTHING else: Cmd+C stays
 -- inert there so nothing is taken from python
