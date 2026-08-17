@@ -1,6 +1,18 @@
 -- ~/drill/nvimrc.lua -- isolated drill editor. Load ONLY via: nvim -u ~/drill/nvimrc.lua
 -- Syntax highlighting only. No completion, no LSP, no snippets, no plugins, no AI.
-vim.opt.runtimepath:remove(vim.fn.stdpath("data") .. "/site")
+-- (One exception, opted into per keypress: the Ctrl+B sidebar -- see
+-- explorer.lua -- whose pinned checkouts are the ONLY third-party code that
+-- may load here.)
+--
+-- Removing the site dir from 'runtimepath' was never the whole seal: startup
+-- packages load from 'packpath', which still held it -- measured, a plugin in
+-- ~/.local/share/nvim/site/pack/x/start/ loaded inside drill. All three
+-- doors close here, so "no plugins" means the machine's plugins too.
+for _, p in ipairs({ vim.fn.stdpath("data") .. "/site",
+                     vim.fn.stdpath("data") .. "/site/after" }) do
+  vim.opt.runtimepath:remove(p)
+  vim.opt.packpath:remove(p)
+end
 vim.g.mapleader = " "
 vim.cmd("syntax on")
 vim.cmd("filetype plugin indent on")
@@ -1215,6 +1227,22 @@ local function repl_hide()
   if shows(repl_win, repl_buf) then
     remember_h(repl_win)
     vim.api.nvim_win_hide(repl_win)                    -- window gone, python untouched
+    -- Hiding a window hands focus to a NEIGHBOR, and with the sidebar open
+    -- that neighbor is the tree -- measured: <C-e> out of the REPL parked
+    -- the caret in the sidebar in Normal mode. "Back to the code" has to
+    -- mean the code: walk to the first window holding a typing buffer.
+    -- None anywhere (a bare listing plus the tree) leaves focus where it
+    -- fell, which type_here() below already treats as "nothing to do".
+    if not typing_buffer() then
+      for _, w in ipairs(vim.api.nvim_list_wins()) do
+        local b = vim.api.nvim_win_get_buf(w)
+        if vim.bo[b].buftype == "" and vim.bo[b].modifiable
+           and vim.bo[b].filetype ~= "netrw" then
+          vim.api.nvim_set_current_win(w)
+          break
+        end
+      end
+    end
   end
   type_here()                                          -- back in the editor, typing
 end
@@ -1312,6 +1340,35 @@ for _, m in ipairs({
 }) do
   map(m[1], m[2], m[3], S)
 end
+
+-- ---------------------------------------------------------------------------
+-- The file-explorer sidebar  --  Ctrl+B (and Cmd+B, bound in the mac section)
+--
+-- The one deliberate exception to "no plugins". All of it lives in
+-- explorer.lua and the pinned checkouts under vendor/, and none of it is
+-- loaded -- not even added to 'runtimepath' -- until the first toggle, so an
+-- editor that never presses Ctrl+B runs exactly the config it always has.
+-- Ctrl+B is bound in n/i only, deliberately: in cmdline it is
+-- cursor-to-start at the / prompt this config leans on, and in the
+-- interpreter it is readline's backward-char (and tmux's prefix). Cmd+B
+-- covers the interpreter instead.
+local explorer = nil
+local function tree_toggle()
+  vim.cmd("stopinsert")
+  if explorer == nil then
+    local here = vim.fn.fnamemodify(debug.getinfo(1, "S").source:sub(2), ":p:h")
+    local ok, mod = pcall(dofile, here .. "/explorer.lua")
+    explorer = (ok and mod) or false
+    if explorer then explorer.setup({ type_here = type_here }) end
+  end
+  if not explorer then
+    vim.notify("drill: explorer.lua failed to load -- reinstall or git pull",
+      vim.log.levels.WARN)
+    return
+  end
+  explorer.toggle()
+end
+map({ "n", "i" }, "<C-b>", tree_toggle, S)
 
 -- ---------------------------------------------------------------------------
 -- Quit  --  Ctrl+Shift+Q
@@ -1503,6 +1560,11 @@ local function copy_line()
 end
 
 map({ "n", "v", "i" }, "<D-s>", save, S)
+
+-- Cmd+B mirrors Ctrl+B, plus terminal mode: ^B belongs to readline in the
+-- interpreter, but Cmd+B arrives as CSI-u and python never sees it, so the
+-- sidebar is reachable from the REPL too.
+map({ "n", "i", "t" }, "<D-b>", tree_toggle, S)
 
 map({ "x", "s" }, "<D-c>", copy_selection, S)
 map({ "n", "i" }, "<D-c>", copy_line, S)
