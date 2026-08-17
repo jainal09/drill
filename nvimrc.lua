@@ -1,6 +1,18 @@
 -- ~/drill/nvimrc.lua -- isolated drill editor. Load ONLY via: nvim -u ~/drill/nvimrc.lua
 -- Syntax highlighting only. No completion, no LSP, no snippets, no plugins, no AI.
-vim.opt.runtimepath:remove(vim.fn.stdpath("data") .. "/site")
+-- (One exception, opted into per keypress: the Ctrl+B sidebar -- see
+-- explorer.lua -- whose pinned checkouts are the ONLY third-party code that
+-- may load here.)
+--
+-- Removing the site dir from 'runtimepath' was never the whole seal: startup
+-- packages load from 'packpath', which still held it -- measured, a plugin in
+-- ~/.local/share/nvim/site/pack/x/start/ loaded inside drill. All three
+-- doors close here, so "no plugins" means the machine's plugins too.
+for _, p in ipairs({ vim.fn.stdpath("data") .. "/site",
+                     vim.fn.stdpath("data") .. "/site/after" }) do
+  vim.opt.runtimepath:remove(p)
+  vim.opt.packpath:remove(p)
+end
 vim.g.mapleader = " "
 vim.cmd("syntax on")
 vim.cmd("filetype plugin indent on")

@@ -45,6 +45,17 @@ end
 ok("completion_infercase_off", vim.o.infercase == false, vim.o.infercase)
 ok("completion_no_lsp_clients", #vim.lsp.get_clients() == 0, #vim.lsp.get_clients())
 
+-- ---- no third-party code leaks in ----------------------------------------
+-- the site dir must be off BOTH paths: rtp alone was never the seal, because
+-- startup packages (pack/*/start) load from packpath
+local site = vim.fn.stdpath("data") .. "/site"
+for _, opt in ipairs({ "runtimepath", "packpath" }) do
+  local v = "," .. vim.o[opt] .. ","
+  ok("no_user_site_in_" .. opt,
+     not v:find("," .. site .. ",", 1, true) and
+     not v:find("," .. site .. "/after,", 1, true), vim.o[opt])
+end
+
 -- ---- no files left lying around ------------------------------------------
 ok("no_swapfile", vim.o.swapfile == false, vim.o.swapfile)
 ok("no_backup", vim.o.backup == false, vim.o.backup)
