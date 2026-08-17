@@ -1,0 +1,25 @@
+docs/macos-cmd.md
+  s_b9f3ac61b57ca8::t_8bf39602d46379 136-138,141-143
+  s_b9f3ac61b57ca8::t_3cce01456afa0c 144-146
+  s_b9f3ac61b57ca8::t_b5bdeb8d57e10a 95
+KEYS.md
+  s_b9f3ac61b57ca8::t_b5104174f51f91 195-201
+README.md
+  s_b9f3ac61b57ca8::t_8f8bca2a87e3f1 38-40
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "a97fef7a835d69d79bc93e2ecad51aefbe623734",
+  "prompts": {},
+  "sessions": {
+    "s_b9f3ac61b57ca8": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d4c50cfe-52e2-415e-a77a-3d2fa06185b6",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jainal Gosaliya <jainal09gosalia@gmail.com>"
+    }
+  }
+}
