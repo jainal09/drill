@@ -92,7 +92,7 @@ leading ESC is added for you):
 | Chord | Esc+ |
 |---|---|
 | Cmd+Z | `[122;9u` |
-| Cmd+Shift+Z | `[90;9u` |
+| Cmd+Shift+Z | `[122;10u` |
 | Cmd+/ | `[47;9u` |
 | Cmd+A | `[97;9u` |
 | Cmd+C | `[99;9u` |
@@ -133,16 +133,17 @@ a chord back at the shell — see kitty's mapping documentation.
 Unbind Ghostty's own use of a chord and it can reach the program
 (`~/.config/ghostty/config`):
 
-```
-keybind = cmd+z=ignore
-keybind = cmd+shift+z=ignore
+```ini
+keybind = cmd+z=unbind
+keybind = cmd+shift+z=unbind
 ```
 
-`ignore` consumes Ghostty's default action so the chord is not taken; note
-that macOS intercepts *menu* shortcuts before Ghostty sees them, so a few
-chords (Cmd+C among them) may need their menu equivalent changed in System
-Settings → Keyboard → Keyboard Shortcuts → App Shortcuts. `keycheck.sh` is
-the arbiter of what actually got through.
+`unbind` removes Ghostty's own binding so the chord passes through as a CSI-u
+sequence -- `ignore` is the trap here, it swallows the key and forwards
+nothing. Note also that macOS intercepts *menu* shortcuts before Ghostty sees
+them, so a few chords (Cmd+C among them) may need their menu equivalent
+changed in System Settings → Keyboard → Keyboard Shortcuts → App Shortcuts.
+`keycheck.sh` is the arbiter of what actually got through.
 
 ## Terminal.app
 

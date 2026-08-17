@@ -35,8 +35,9 @@ to answer. Just type.
 
 **One optional extra step on macOS:** flip a single iTerm2 setting
 (*Settings → Profiles → Keys → General → "Left Command key" → Super*) and
-every drill shortcut is on **Cmd** too — Cmd+C, Cmd+V, Cmd+Z, the keys your
-hand already knows — while the shell prompt keeps its normal Cmd. Details and
+every editor chord is on **Cmd** too — Cmd+C, Cmd+V, Cmd+Z, the keys your
+hand already knows — while the shell prompt keeps its normal Cmd. `Ctrl+E`
+and `Ctrl+R` stay on Ctrl on purpose: they are drill's own keys. Details and
 other terminals: [docs/macos-cmd.md](docs/macos-cmd.md).
 
 ## `Ctrl+E` — your code, live

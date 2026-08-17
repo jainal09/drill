@@ -192,10 +192,13 @@ type code  ->  Ctrl+E  ->  typing at >>>  ->  Ctrl+E  ->  back in the file, in I
 You never press `i`, and you never press Esc. Landing in a live interpreter puts
 you at the prompt; landing back on the file puts you in insert. `Ctrl+W j` /
 `Ctrl+W k` and mouse clicks follow the same rule — *leaving the file*. They do
-not work leaving the **interpreter**: nothing but `Ctrl+E` and `Ctrl+Shift+Q` —
-plus `Cmd+V` and `Cmd+Q` where the terminal forwards Cmd (see
-[docs/macos-cmd.md](docs/macos-cmd.md)) — is bound in terminal mode,
-deliberately, so `Ctrl+W` goes to python as a word-erase and you stay put. Out of the REPL it is `Ctrl+E`, `Ctrl+\` `Ctrl+N`, or a click.
+not work leaving the **interpreter**: only `Ctrl+E` and `Ctrl+Shift+Q` — plus
+`Cmd+V` and `Cmd+Q` where the terminal forwards Cmd (see
+[docs/macos-cmd.md](docs/macos-cmd.md)) — do anything in terminal mode, and
+every other forwarded Cmd chord is floored to `<Nop>` so a stray one cannot
+spray notation at python. `Ctrl+W` is untouched and still reaches python as a
+word-erase, so you stay put. Out of the REPL it is `Ctrl+E`, `Ctrl+\`
+`Ctrl+N`, or a click.
 
 **The interpreter always has the code you can see.** Edited the file since it
 started? `Ctrl+E` restarts python with the new code. Didn't touch it? Same
