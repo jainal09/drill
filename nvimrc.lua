@@ -1227,6 +1227,22 @@ local function repl_hide()
   if shows(repl_win, repl_buf) then
     remember_h(repl_win)
     vim.api.nvim_win_hide(repl_win)                    -- window gone, python untouched
+    -- Hiding a window hands focus to a NEIGHBOR, and with the sidebar open
+    -- that neighbor is the tree -- measured: <C-e> out of the REPL parked
+    -- the caret in the sidebar in Normal mode. "Back to the code" has to
+    -- mean the code: walk to the first window holding a typing buffer.
+    -- None anywhere (a bare listing plus the tree) leaves focus where it
+    -- fell, which type_here() below already treats as "nothing to do".
+    if not typing_buffer() then
+      for _, w in ipairs(vim.api.nvim_list_wins()) do
+        local b = vim.api.nvim_win_get_buf(w)
+        if vim.bo[b].buftype == "" and vim.bo[b].modifiable
+           and vim.bo[b].filetype ~= "netrw" then
+          vim.api.nvim_set_current_win(w)
+          break
+        end
+      end
+    end
   end
   type_here()                                          -- back in the editor, typing
 end
