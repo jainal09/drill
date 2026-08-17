@@ -14,6 +14,7 @@
 # ============================================================================
 import fcntl
 import os
+import re
 import select
 import shutil
 import signal
@@ -65,16 +66,28 @@ def main():
         time.sleep(0.15)
     time.sleep(1.5)
 
+    # Everything nvim paints, kept: the right-click menu is a floating window
+    # with no API to ask "what does it say", so those cases read the pty
+    # stream itself, escape-stripped -- same technique as quit_drive.py.
+    painted = []
+
     def drain():
         while True:
             r, _, _ = select.select([fd], [], [], 0.05)
             if not r:
                 return
             try:
-                if not os.read(fd, 65536):
+                data = os.read(fd, 65536)
+                if not data:
                     return
+                painted.append(data.decode("utf-8", "replace"))
             except OSError:
                 return
+
+    def screen_since_mark():
+        raw = "".join(painted)
+        txt = re.sub(r"\x1b\[[0-9;:?]*[a-zA-Z]|\x1b\][^\x07]*\x07|\x1b[>=]", "", raw)
+        return re.sub(r"\s+", " ", txt)
 
     def q(expr, t=4):
         """The short timeout IS an assertion: a gesture that wedges the editor
@@ -187,6 +200,37 @@ def main():
            poll(os.path.join(root, "newdir")),
            str(os.path.isdir(os.path.join(root, "newdir"))))
         ok("no_modal_after_toolbar", q("mode(1)") != "<WEDGED>", q("mode(1)"))
+
+        # ---- the right-click menu -----------------------------------------
+        def floats():
+            return q('len(filter(map(getwininfo(), '
+                     '"nvim_win_get_config(v:val.winid).relative"), "v:val != \'\'"))')
+
+        r = row_of("d.py")
+        del painted[:]
+        click(3, r, button=2, w=1.0)                     # right-click d.py
+        ok("right_click_draws_menu", floats() != "0", floats())
+        seen = screen_since_mark()
+        ok("menu_lists_drill_items",
+           "New file" in seen and "Rename" in seen and "Delete" in seen,
+           seen[-300:])
+
+        # the float sits at the click: border corner one row below the mouse,
+        # text one more in. "Open" is the 4th text line (file, folder,
+        # separator, Open).
+        click(7, r + 5, w=1.2)
+        ok("menu_open_item_opens_file", q("expand('%:t')") == "d.py", q("expand('%:t')"))
+        ok("menu_gone_after_item_click", floats() == "0", floats())
+        ok("typing_after_menu_open", q("mode(1)") == "i", q("mode(1)"))
+
+        # outside the tree the stock right-click survives: the built-in
+        # popup_setpos menu, not drill's -- then Esc dismisses it
+        del painted[:]
+        click(60, 5, button=2, w=1.0)
+        seen = screen_since_mark()
+        ok("file_right_click_stays_stock", "New file" not in seen, seen[-200:])
+        press("\x1b", 0.5)
+        ok("no_wedge_after_stock_menu", q("mode(1)") != "<WEDGED>", q("mode(1)"))
     finally:
         subprocess.run(["nvim", "--server", SOCK, "--remote-send", "<C-\\><C-n>:qa!<CR>"],
                        capture_output=True, stdin=subprocess.DEVNULL)

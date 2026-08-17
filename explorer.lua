@@ -30,6 +30,7 @@ end
 
 local host = { type_here = function() end }
 local ready = false
+local tree_menu   -- defined below the toolbar; setup's right-click map closes over it
 
 function M.setup(h)
   if M.error or ready then return end
@@ -82,6 +83,24 @@ function M.setup(h)
       if vim.bo.filetype == "NvimTree" then vim.cmd("stopinsert") end
     end,
   })
+
+  -- Right-click, global but late: this mapping exists only once the sidebar
+  -- has been toggled at all, and everywhere outside the tree it re-feeds the
+  -- unmapped key, so the file buffer keeps whatever stock right-click this
+  -- nvim came with ('mousemodel' popup_setpos and its built-in menu today).
+  -- Global is forced by how mouse events route: a right-click ON the tree
+  -- while you are typing in the file is delivered to the FILE buffer's maps,
+  -- so a tree-buffer-local mapping would simply never fire.
+  vim.keymap.set({ "n", "i" }, "<RightMouse>", function()
+    local mp = vim.fn.getmousepos()
+    local b = mp.winid ~= 0 and vim.api.nvim_win_get_buf(mp.winid)
+    if b and vim.bo[b].filetype == "NvimTree" then
+      tree_menu()
+    else
+      vim.api.nvim_feedkeys(
+        vim.api.nvim_replace_termcodes("<RightMouse>", true, true, true), "n", false)
+    end
+  end, { silent = true })
   ready = true
 end
 
@@ -122,6 +141,50 @@ local TOOLBAR = table.concat({
   " %@v:lua.DrillTreeNewFile@[+ File]%X",
   "%@v:lua.DrillTreeNewFolder@[+ Folder]%X",
 }, "  ")
+
+-- ----------------------------------------------------------------------------
+-- The right-click menu. menu/volt do the drawing and the item clicks; the
+-- items are drill's own -- plain ASCII labels, not the upstream set, whose
+-- names are nerd-font glyphs (tofu on a stock terminal font) and whose "New
+-- folder" entry is the trailing-slash convention wearing a menu costume.
+-- Every cmd acts on the node under the tree cursor, which the right-click
+-- parked there first.
+
+local function menu_items()
+  local api = require("nvim-tree.api")
+  return {
+    { name = "New file",       cmd = function() api.fs.create() end,        rtxt = "a" },
+    { name = "New folder",     cmd = _G.DrillTreeNewFolder,                 rtxt = "A" },
+    { name = "separator" },
+    { name = "Open",           cmd = function() api.node.open.edit() end,   rtxt = "<CR>" },
+    { name = "Open in split",  cmd = function() api.node.open.vertical() end, rtxt = "v" },
+    { name = "separator" },
+    { name = "Rename",         cmd = function() api.fs.rename() end,        rtxt = "r" },
+    { name = "Cut",            cmd = function() api.fs.cut() end,           rtxt = "x" },
+    { name = "Copy",           cmd = function() api.fs.copy.node() end,     rtxt = "c" },
+    { name = "Paste",          cmd = function() api.fs.paste() end,         rtxt = "p" },
+    { name = "separator" },
+    { name = "Delete",         cmd = function() api.fs.remove() end,        rtxt = "d" },
+  }
+end
+
+function tree_menu()
+  local mp = vim.fn.getmousepos()
+  if mp.winid == 0 then return end
+  -- Focus the tree and park its cursor on the clicked row FIRST: the item
+  -- cmds all mean "the node under the cursor", and the menu float itself
+  -- opens unfocused, so this is what "right-clicked that file" resolves to.
+  vim.api.nvim_set_current_win(mp.winid)
+  if mp.line > 0 then
+    pcall(vim.api.nvim_win_set_cursor, mp.winid, { mp.line, 0 })
+  end
+  require("menu.utils").delete_old_menus()
+  -- menu leaves its auto-close <LeftMouse> map behind when a menu is closed
+  -- by an item click rather than an outside click; clear the stale one so
+  -- it cannot stack
+  pcall(vim.keymap.del, "n", "<LeftMouse>")
+  require("menu").open(menu_items(), { mouse = true, border = true })
+end
 
 -- A left-click, decomposed. The press already moved the cursor to the row
 -- (built-in), so the release only has to act on the node under it. Guard on
