@@ -331,6 +331,52 @@ def main():
         ok("tree_root_follows_reopen",
            tree_root().rstrip("/").endswith(os.path.basename(root)),
            tree_root())
+
+        # ---- the EMFILE regression ----------------------------------------
+        # nvim-tree registers one filesystem watcher per directory; rooted
+        # somewhere large that exhausted the fd limit and sprayed "[NvimTree]
+        # File system watcher failed (EMFILE)" over the quit prompt until
+        # Enter fed the message pager instead of the dialog. Watchers must
+        # stay off -- drill's files change from inside the editor.
+        w = q('luaeval("tostring(require(\\"nvim-tree.config\\")'
+              '.g.filesystem_watchers.enable)")')
+        ok("fs_watchers_disabled", w == "false", w)
+
+        # the netrw listing roots the tree at the directory it is showing
+        press("\x02", 0.8)                               # close
+        subprocess.run(["nvim", "--server", SOCK, "--remote-send",
+                        "<C-\\><C-n><C-w>k:e sub<CR>"],
+                       capture_output=True, stdin=subprocess.DEVNULL)
+        time.sleep(1.0)
+        press("\x02", 1.2)
+        ok("netrw_roots_tree_at_its_dir",
+           tree_root().rstrip("/").endswith("/sub"), tree_root())
+
+        # ...and a toggle from the REPL keeps that root instead of yanking it
+        # back to the shell's cwd (which is how Cmd+B from the interpreter
+        # used to hand you a tree of ~)
+        press("\x02", 0.8)                               # close
+        subprocess.run(["nvim", "--server", SOCK, "--remote-send",
+                        "<C-\\><C-n><C-w>j<C-w>j"],
+                       capture_output=True, stdin=subprocess.DEVNULL)
+        time.sleep(0.6)
+        ok("parked_in_the_repl", q("&buftype") == "terminal", q("&buftype"))
+        press("\x1b[98;9u", 1.2)                         # Cmd+B, terminal mode
+        ok("repl_toggle_keeps_root",
+           tree_root().rstrip("/").endswith("/sub"), tree_root())
+
+        # ---- Ctrl+E out of the REPL lands in the FILE, not the sidebar ----
+        # Hiding a split hands focus to a neighboring window, and with the
+        # tree open that neighbor is the tree -- a window you cannot type in.
+        # "hide it and go back to the code" has to mean the code.
+        subprocess.run(["nvim", "--server", SOCK, "--remote-send",
+                        "<C-\\><C-n><C-w>k:e zz.py<CR><C-w>j"],
+                       capture_output=True, stdin=subprocess.DEVNULL)
+        time.sleep(1.0)                                  # a real file up top
+        press("\x05", 2.0)                               # Ctrl+E in the REPL
+        ok("ctrl_e_hides_repl_tree_open", q("winnr('$')") == "2", q("winnr('$')"))
+        ok("ctrl_e_lands_in_editor", q("&filetype") == "python", q("&filetype"))
+        ok("ctrl_e_lands_typing", q("mode(1)") == "i", q("mode(1)"))
     finally:
         subprocess.run(["nvim", "--server", SOCK, "--remote-send", "<C-\\><C-n>:qa!<CR>"],
                        capture_output=True, stdin=subprocess.DEVNULL)

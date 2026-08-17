@@ -97,7 +97,7 @@ work, because there is no unsaved state to lose.
 ## Nothing helps you type
 
 No autocomplete. No LSP, no Copilot, no snippets, no signature hints, no
-auto-import. Not "turned off" — **absent, at every source, and a 722-case test
+auto-import. Not "turned off" — **absent, at every source, and a 729-case test
 suite asserts it**. Syntax highlighting is the only thing on screen besides your
 own keystrokes. Your `~/.config/nvim` and `~/.vimrc` are never touched; the
 config loads with `nvim -u` and exists only inside drill.
@@ -181,7 +181,7 @@ so `git pull` stays clean forever.
 | [KEYS.md](KEYS.md) | every keybinding, every conflict, and how each is resolved |
 | [docs/design.md](docs/design.md) | why the editor behaves the way it does — the mouse, autosave, search, quitting, and the five deliberate trade-offs |
 | [docs/verify.md](docs/verify.md) | prove nothing is helping you, and that your own nvim is untouched |
-| [docs/testing.md](docs/testing.md) | the 722-case gate that drives the real config with real keycodes |
+| [docs/testing.md](docs/testing.md) | the 729-case gate that drives the real config with real keycodes |
 | [docs/recording.md](docs/recording.md) | `demo.sh` — the self-driving tour that recorded the video above |
 | [docs/wsl.md](docs/wsl.md) | WSL: the clipboard, the timer's sound and notification, and the one thing you have to check by hand |
 

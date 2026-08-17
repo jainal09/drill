@@ -43,6 +43,15 @@ function M.setup(h)
     hijack_netrw = false,
     git = { enable = false },       -- solves/ is scratch; no gutter ceremony
     diagnostics = { enable = false },
+    -- No filesystem watchers, and this is a bug fix, not a taste: nvim-tree
+    -- registers one watcher per directory, and a tree rooted somewhere large
+    -- (the pre-rooting-fix sidebar rooted at the shell's cwd -- often ~)
+    -- exhausted the fd limit and sprayed "[NvimTree] File system watcher
+    -- failed (EMFILE)" over everything, including the quit prompt, until
+    -- Enter fed the message pager instead of the dialog. drill's files
+    -- change from inside the editor; the tree refreshes on its own actions
+    -- and the glue reloads after every drop/mkdir.
+    filesystem_watchers = { enable = false },
     update_focused_file = { enable = true },
     view = { width = 32, preserve_window_proportions = true },
     renderer = {
@@ -307,8 +316,13 @@ function M.toggle()
   -- working directory. drill launches nvim from wherever the shell happened
   -- to be -- `d lld-prac main` in your home directory used to open a tree of
   -- ~, which is a tree of everything except your project. The file's folder
-  -- is the project; that is what the sidebar is for. No real file under the
-  -- caret (the netrw listing, a scratch buffer): fall back to the cwd.
+  -- is the project; that is what the sidebar is for.
+  --
+  -- Re-root ONLY when the current buffer knows better: a real file (its
+  -- folder), or the netrw listing (the directory it is showing). From the
+  -- REPL or any nameless buffer, pass no path at all -- nvim-tree then keeps
+  -- the root it already had, instead of yanking it back to the shell's cwd,
+  -- which is how a Cmd+B from the interpreter used to hand you a tree of ~.
   --
   -- focus=false: the sidebar appears, the caret stays in your code -- the
   -- mouse is how you enter the tree. type_here() on both directions, so the
@@ -318,6 +332,9 @@ function M.toggle()
   if vim.bo.buftype == "" and f ~= "" and vim.fn.filereadable(f) == 1 then
     opts.path = vim.fn.fnamemodify(f, ":h")
     opts.find_file = true               -- ...and land highlighted on the file
+  elseif vim.bo.filetype == "netrw" and type(vim.b.netrw_curdir) == "string"
+     and vim.fn.isdirectory(vim.b.netrw_curdir) == 1 then
+    opts.path = vim.b.netrw_curdir
   end
   require("nvim-tree.api").tree.toggle(opts)
   host.type_here()
