@@ -91,25 +91,25 @@ fi
 # is worse than printing none. Empty = this manager has no name we know for it.
 pkg_for() {
   case "$PM" in
-    brew)    case "$1" in python3) echo python ;; fzf) echo fzf ;;
+    brew)    case "$1" in python3) echo python ;; fzf) echo fzf ;; git) echo git ;;
                           clipboard) echo xclip ;; esac ;;
-    apt-get) case "$1" in python3) echo python3 ;; fzf) echo fzf ;;
+    apt-get) case "$1" in python3) echo python3 ;; fzf) echo fzf ;; git) echo git ;;
                           clipboard) echo "wl-clipboard xclip" ;;
                           sound) echo pulseaudio-utils ;;
                           notify) echo libnotify-bin ;; pgrep) echo procps ;; esac ;;
-    dnf)     case "$1" in python3) echo python3 ;; fzf) echo fzf ;;
+    dnf)     case "$1" in python3) echo python3 ;; fzf) echo fzf ;; git) echo git ;;
                           clipboard) echo "wl-clipboard xclip" ;;
                           sound) echo pulseaudio-utils ;;
                           notify) echo libnotify ;; pgrep) echo procps-ng ;; esac ;;
-    zypper)  case "$1" in python3) echo python3 ;; fzf) echo fzf ;;
+    zypper)  case "$1" in python3) echo python3 ;; fzf) echo fzf ;; git) echo git ;;
                           clipboard) echo "wl-clipboard xclip" ;;
                           sound) echo pulseaudio-utils ;;
                           notify) echo libnotify-tools ;; pgrep) echo procps ;; esac ;;
-    pacman)  case "$1" in python3) echo python ;; fzf) echo fzf ;;
+    pacman)  case "$1" in python3) echo python ;; fzf) echo fzf ;; git) echo git ;;
                           clipboard) echo "wl-clipboard xclip" ;;
                           sound) echo libpulse ;;
                           notify) echo libnotify ;; pgrep) echo procps-ng ;; esac ;;
-    apk)     case "$1" in python3) echo python3 ;; fzf) echo fzf ;;
+    apk)     case "$1" in python3) echo python3 ;; fzf) echo fzf ;; git) echo git ;;
                           clipboard) echo xclip ;; sound) echo pulseaudio-utils ;;
                           notify) echo libnotify ;; pgrep) echo procps ;; esac ;;
   esac
@@ -142,7 +142,7 @@ nvim_pkg() {
     *)  echo neovim ;;
   esac
 }
-NVIM_BY_HAND="install neovim 0.9+ by hand: 'snap install nvim --classic',
+NVIM_BY_HAND="install neovim 0.10+ by hand: 'snap install nvim --classic',
     or the AppImage from https://github.com/neovim/neovim/releases"
 
 MISSING=""        # packages we can name -- offered as one install command
@@ -184,10 +184,10 @@ check_deps() {
     local maj min rest
     maj="$(printf '%s' "${cand%%.*}" | tr -cd '0-9')"
     rest="${cand#*.}"; min="$(printf '%s' "${rest%%.*}" | tr -cd '0-9')"
-    if [ "${maj:-0}" -eq 0 ] && [ "${min:-0}" -lt 9 ]; then
+    if [ "${maj:-0}" -eq 0 ] && [ "${min:-0}" -lt 10 ]; then
       NOTES="$NOTES
-    - neovim $cand is too old, need 0.9+ (the config is Lua and uses nvim_win_hide).
-      $NVIM_BY_HAND"
+    - neovim $cand is too old, need 0.10+ (the config is Lua, and the Ctrl+B
+      sidebar's pinned plugins need 0.10). $NVIM_BY_HAND"
       HARD=1
     fi
   fi
@@ -205,6 +205,9 @@ check_deps() {
 
   command -v fzf >/dev/null 2>&1 ||
     need feature fzf "fzf -- 'd search' has nothing to fuzzy-pick with"
+
+  command -v git >/dev/null 2>&1 ||
+    need feature git "git -- vendor.sh fetches the Ctrl+B sidebar's pinned plugins with it"
 
   if [ "$OS" != "Darwin" ]; then
     # macOS has pbcopy/pbpaste built in and nvim always finds them. Everywhere
@@ -313,14 +316,14 @@ DRILL_HOME_REAL="$(cd "$DRILL_HOME" && pwd -P)"
 # would let an incomplete clone install "successfully" from its own directory
 # and then add a `source .../drill.sh` line for a drill.sh that does not exist,
 # or leave d/dt/ds pointing at a missing nvimrc.lua.
-for f in nvimrc.lua drill.sh preload.py KEYS.md; do
+for f in nvimrc.lua drill.sh preload.py KEYS.md explorer.lua vendor.sh; do
   [ -f "$SRC/$f" ] || bail "missing $f next to install.sh"
 done
 
 if [ "$SRC" = "$DRILL_HOME_REAL" ]; then
   say "running from $DRILL_HOME itself -- the files are already in place"
 else
-  for f in nvimrc.lua drill.sh preload.py KEYS.md; do
+  for f in nvimrc.lua drill.sh preload.py KEYS.md explorer.lua vendor.sh; do
     if [ -f "$DRILL_HOME/$f" ] && ! cmp -s "$SRC/$f" "$DRILL_HOME/$f"; then
       cp "$DRILL_HOME/$f" "$DRILL_HOME/$f.bak"
       say "kept your old $f as $f.bak"
@@ -332,6 +335,17 @@ fi
 # yours to fill -- never clobbered
 [ -e "$DRILL_HOME/cheatsheet.py" ] || : > "$DRILL_HOME/cheatsheet.py"
 [ -e "$DRILL_HOME/log.md" ]       || : > "$DRILL_HOME/log.md"
+
+# The Ctrl+B sidebar's pinned plugin checkouts. FEATURE-level on purpose: a
+# failed fetch (an offline install) costs the sidebar and nothing else, and
+# vendor.sh can be rerun by hand any time. Already at the pins, it is an
+# offline no-op, so re-installs cost nothing here.
+if command -v git >/dev/null 2>&1; then
+  "$DRILL_HOME/vendor.sh" ||
+    say "could not fetch the sidebar plugins -- Ctrl+B will say so; rerun $DRILL_HOME/vendor.sh when online"
+else
+  say "no git -- skipped the Ctrl+B sidebar plugins; install git, then run $DRILL_HOME/vendor.sh"
+fi
 
 # ---- shell rc ---------------------------------------------------------
 RC="$(rc_file)"
